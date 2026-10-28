@@ -9,7 +9,7 @@ const CREDIT_STEP = 10;
 
 export function ActivitySection({ draft, onField }: { draft: SettingsDraft; onField: SetDraftField }) {
   return (
-    <SettingsSection title="Activity">
+    <SettingsSection title="Apple Health & activity">
       <SwitchRow
         label="Add activity credit"
         helper="Add a share of Apple Health active calories back to your daily allowance. Baseline activity is already in your target, so 50% avoids double counting."

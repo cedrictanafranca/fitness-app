@@ -12,7 +12,7 @@ export function TargetsSection({
   onField: SetDraftField;
 }) {
   return (
-    <SettingsSection title="Daily targets">
+    <SettingsSection title="Nutrition goals">
       <FieldInput
         label="Calories"
         suffix="kcal"

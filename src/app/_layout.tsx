@@ -16,6 +16,7 @@ export default function RootLayout() {
         <Stack.Screen name="log" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="recipes" options={{ headerShown: false }} />
         <Stack.Screen name="assistant" options={{ presentation: 'modal', title: 'Assistant' }} />
+        <Stack.Screen name="exercise" options={{ presentation: 'modal', title: 'Exercise' }} />
       </Stack>
     </ThemeProvider>
   );

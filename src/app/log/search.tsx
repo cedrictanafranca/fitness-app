@@ -9,7 +9,7 @@ import { Spacing } from '@/constants/theme';
 import type { Food, MealItem } from '@/core/types';
 import { foodsRepo, mealsRepo, recipesRepo } from '@/data/repos';
 import { QuantitySheet } from '@/features/log/components/QuantitySheet';
-import { Button, Icon, Notice, TextField } from '@/features/log/components/ui';
+import { Button, Chip, Icon, Notice, TextField } from '@/features/log/components/ui';
 import { createdFoodStore } from '@/features/log/created-food-store';
 import { addDraftItem, getDraft } from '@/features/log/draft-store';
 import { SOURCE_LABELS, errorMessage, macroLine } from '@/features/log/format';
@@ -31,6 +31,14 @@ interface Section {
 
 const DEBOUNCE_MS = 350;
 
+type Filter = 'all' | 'recent' | 'foods' | 'recipes';
+const FILTERS: { value: Filter; label: string; sections: string[] }[] = [
+  { value: 'all', label: 'All', sections: [] },
+  { value: 'recent', label: 'Recent', sections: ['Recent'] },
+  { value: 'foods', label: 'My foods', sections: ['My foods'] },
+  { value: 'recipes', label: 'Recipes', sections: ['Recipes'] },
+];
+
 export default function SearchScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const theme = useTheme();
@@ -38,6 +46,7 @@ export default function SearchScreen() {
   const fromReview = from === 'review';
 
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
@@ -126,9 +135,21 @@ export default function SearchScreen() {
     else replaceWithReview();
   };
 
-  const emptyText = query.trim()
-    ? 'No matches. Try another name, or create a custom food.'
-    : 'No suggestions yet. Search above, or create a custom food.';
+  const allowed = FILTERS.find((f) => f.value === filter)?.sections ?? [];
+  const visible = filter === 'all' ? sections : sections.filter((s) => allowed.includes(s.title));
+
+  const emptyTitle =
+    filter === 'foods' ? 'My foods' : filter === 'recipes' ? 'Recipes' : filter === 'recent' ? 'Recent' : query.trim() ? 'No matches' : 'Nothing yet';
+  const emptyText =
+    filter === 'foods'
+      ? 'Add a custom food to your personal list.'
+      : filter === 'recipes'
+        ? 'Save family dishes under Recipes to log them by weight.'
+        : filter === 'recent'
+          ? 'Foods you log show up here for quick re-adding.'
+          : query.trim()
+            ? 'Try another name, or create a custom food.'
+            : 'Search above, or create a custom food.';
 
   return (
     <ThemedView style={styles.flex}>
@@ -157,12 +178,17 @@ export default function SearchScreen() {
           clearButtonMode="while-editing"
           accessibilityLabel="Search foods"
         />
+        <View style={styles.filters}>
+          {FILTERS.map((f) => (
+            <Chip key={f.value} label={f.label} selected={filter === f.value} onPress={() => setFilter(f.value)} />
+          ))}
+        </View>
         {remoteError ? <Notice tone="warn">{remoteError}</Notice> : null}
         {error ? <Notice tone="bad">{error}</Notice> : null}
       </View>
 
       <SectionList
-        sections={sections}
+        sections={visible}
         keyExtractor={(p, i) => `${p.key}:${i}`}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
@@ -195,9 +221,17 @@ export default function SearchScreen() {
           loading ? (
             <ActivityIndicator style={styles.spinner} />
           ) : (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
-              {emptyText}
-            </ThemedText>
+            <View style={styles.empty}>
+              <ThemedText type="default" style={styles.emptyTitle}>
+                {emptyTitle}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                {emptyText}
+              </ThemedText>
+              {filter === 'foods' || (filter === 'all' && !query.trim() && sections.length === 0) ? (
+                <Button label="Add food" onPress={() => goAddFood()} style={styles.emptyButton} />
+              ) : null}
+            </View>
           )
         }
         ListFooterComponent={loading && sections.length > 0 ? <ActivityIndicator style={styles.spinner} /> : undefined}
@@ -208,7 +242,12 @@ export default function SearchScreen() {
           styles.bottom,
           { backgroundColor: theme.background, borderTopColor: theme.backgroundSelected, paddingBottom: Math.max(insets.bottom, Spacing.three) },
         ]}>
-        <Button label="Create custom food" variant="secondary" onPress={() => goAddFood()} />
+        <View style={styles.bottomRow}>
+          <Button label="Manual add" variant="secondary" onPress={() => goAddFood()} style={styles.bottomButton} />
+          {!fromReview ? (
+            <Button label="Describe it" variant="secondary" onPress={cancelLogFlow} style={styles.bottomButton} />
+          ) : null}
+        </View>
       </View>
 
       <QuantitySheet
@@ -224,6 +263,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two },
+  filters: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' },
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three, gap: Spacing.two },
   sectionTitle: { marginTop: Spacing.three, marginBottom: Spacing.one },
   row: {
@@ -237,6 +277,11 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 2 },
   spinner: { marginVertical: Spacing.four },
-  empty: { textAlign: 'center', marginTop: Spacing.five },
+  empty: { alignItems: 'center', gap: Spacing.one, marginTop: Spacing.six, paddingHorizontal: Spacing.four },
+  emptyTitle: { fontWeight: 700, fontSize: 18 },
+  emptyText: { textAlign: 'center' },
+  emptyButton: { marginTop: Spacing.two },
   bottom: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth },
+  bottomRow: { flexDirection: 'row', gap: Spacing.two },
+  bottomButton: { flex: 1 },
 });

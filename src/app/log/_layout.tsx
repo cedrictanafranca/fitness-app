@@ -19,7 +19,7 @@ export default function LogLayout() {
         <Stack.Screen name="capture" options={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="review" options={{ title: 'Review meal' }} />
         <Stack.Screen name="search" options={{ title: 'Add food' }} />
-        <Stack.Screen name="add-food" options={{ title: 'Custom food' }} />
+        <Stack.Screen name="add-food" options={{ title: 'Add food' }} />
       </Stack>
     </>
   );

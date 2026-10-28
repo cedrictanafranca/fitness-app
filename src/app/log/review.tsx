@@ -7,13 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { toDateKey } from '@/core/nutrition/engine';
 import { mealsRepo } from '@/data/repos';
-import { resetComposer } from '@/features/log/composer-store';
+import { resetComposer, useComposer } from '@/features/log/composer-store';
 import { ItemRow } from '@/features/log/components/ItemRow';
 import { MealTypeChips } from '@/features/log/components/MealTypeChips';
-import { Button, Notice, SectionLabel, TextField } from '@/features/log/components/ui';
+import { Sheet, SheetRow } from '@/features/log/components/Sheet';
+import { Button, Icon, Notice, SectionLabel, TextField } from '@/features/log/components/ui';
 import {
   applyPlateSplit,
   defaultMealName,
@@ -29,16 +30,19 @@ import {
   useDraft,
 } from '@/features/log/draft-store';
 import { errorMessage, round1 } from '@/features/log/format';
-import { cancelLogFlow, finishLogFlow, goSearch } from '@/features/log/nav';
+import { cancelLogFlow, finishLogFlow, goCapture, goSearch } from '@/features/log/nav';
 import { useTheme } from '@/hooks/use-theme';
-import { persistPhoto, resolvePhotoUri } from '@/services/camera';
+import { persistPhoto, pickFromLibrary, resolvePhotoUri } from '@/services/camera';
 
 export default function ReviewScreen() {
   const { mealId } = useLocalSearchParams<{ mealId?: string }>();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const draft = useDraft();
+  const composer = useComposer();
   const editing = !!mealId;
+  const [photoSheet, setPhotoSheet] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(editing);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -88,7 +92,8 @@ export default function ReviewScreen() {
     setSaving(true);
     setSaveError(null);
     try {
-      const photoUri = draft.photoUri ? await persistPhoto(draft.photoUri).catch(() => draft.photoUri) : undefined;
+      const chosen = draft.photoUri ?? composer.photo?.uri;
+      const photoUri = chosen ? await persistPhoto(chosen).catch(() => chosen) : undefined;
       const name = draft.name.trim() || placeholderName;
       if (draft.mealId) {
         await mealsRepo.update(draft.mealId, {
@@ -123,7 +128,19 @@ export default function ReviewScreen() {
 
   const addItem = () => goSearch('review');
 
-  const photo = resolvePhotoUri(draft.photoUri);
+  // A photo taken from this screen lands in the composer; prefer the draft's own photo.
+  const photo = resolvePhotoUri(draft.photoUri ?? composer.photo?.uri);
+
+  const choosePhoto = async () => {
+    setPhotoSheet(false);
+    setPhotoError(null);
+    try {
+      const picked = await pickFromLibrary();
+      if (picked) updateDraft({ photoUri: picked.uri });
+    } catch (e) {
+      setPhotoError(errorMessage(e, 'Could not load that photo.'));
+    }
+  };
 
   return (
     <ThemedView style={styles.flex}>
@@ -150,16 +167,49 @@ export default function ReviewScreen() {
       ) : (
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            {photo ? <Image source={{ uri: photo }} style={styles.photo} contentFit="cover" /> : null}
+            {photo ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Change meal photo" onPress={() => setPhotoSheet(true)}>
+                <Image source={{ uri: photo }} style={styles.photo} contentFit="cover" />
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add meal photo"
+                onPress={() => setPhotoSheet(true)}
+                style={[styles.addPhoto, { borderColor: theme.backgroundSelected }]}>
+                <Icon name="photo" fallback="▣" size={18} color={theme.textSecondary} />
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  Add meal photo
+                </ThemedText>
+              </Pressable>
+            )}
+            {photoError ? <Notice tone="warn">{photoError}</Notice> : null}
 
             <TextField
               value={draft.name}
               onChangeText={(name) => updateDraft({ name })}
-              placeholder={placeholderName}
+              placeholder={draft.items.length ? placeholderName : 'Tap to name'}
               accessibilityLabel="Meal name"
               style={styles.name}
               returnKeyType="done"
             />
+
+            <View style={[styles.totalsCard, { backgroundColor: theme.backgroundElement }]}>
+              <View style={styles.caloriesRow}>
+                <Icon name="flame.fill" fallback="◉" size={22} color={theme.calories} />
+                <View>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Calories
+                  </ThemedText>
+                  <ThemedText style={styles.caloriesValue}>{Math.round(totals.calories)}</ThemedText>
+                </View>
+              </View>
+              <View style={styles.macroRow}>
+                <MacroTile label="Protein" value={totals.protein} color={theme.protein} />
+                <MacroTile label="Carbs" value={totals.carbs} color={theme.carbs} />
+                <MacroTile label="Fat" value={totals.fat} color={theme.fat} />
+              </View>
+            </View>
 
             <MealTypeChips value={draft.mealType} onChange={(mealType) => updateDraft({ mealType })} />
 
@@ -185,12 +235,7 @@ export default function ReviewScreen() {
               </ThemedText>
             ) : null}
 
-            <SectionLabel>Items</SectionLabel>
-            {draft.items.length === 0 ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                No items yet. Add something to log.
-              </ThemedText>
-            ) : null}
+            <SectionLabel>Meal items</SectionLabel>
             {draft.items.map((item) => (
               <ItemRow
                 key={item.id}
@@ -202,7 +247,16 @@ export default function ReviewScreen() {
                 onRemove={onRemove}
               />
             ))}
-            <Button label="Add item" variant="secondary" onPress={addItem} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add items to this meal"
+              onPress={addItem}
+              style={({ pressed }) => [styles.addItems, { borderColor: theme.backgroundSelected }, pressed && { opacity: 0.6 }]}>
+              <ThemedText type="default" style={styles.addItemsPlus}>
+                +
+              </ThemedText>
+              <ThemedText type="smallBold">Add items to this meal</ThemedText>
+            </Pressable>
           </ScrollView>
 
           <View
@@ -210,33 +264,50 @@ export default function ReviewScreen() {
               styles.footer,
               { backgroundColor: theme.background, borderTopColor: theme.backgroundSelected, paddingBottom: Math.max(insets.bottom, Spacing.three) },
             ]}>
-            <View style={styles.totals}>
-              <Total label="Calories" value={`${Math.round(totals.calories)}`} />
-              <Total label="Protein" value={`${totals.protein} g`} />
-              <Total label="Carbs" value={`${totals.carbs} g`} />
-              <Total label="Fat" value={`${totals.fat} g`} />
-            </View>
             {saveError ? <Notice tone="bad">{saveError}</Notice> : null}
             {missing.length > 0 ? (
               <ThemedText type="small" style={{ color: '#D14343' }}>
                 Enter a weight for {missing.length === 1 ? missing[0].name : `${missing.length} items`} to save.
               </ThemedText>
             ) : null}
-            <Button label={editing ? 'Save changes' : 'Save meal'} onPress={save} disabled={!canSave} loading={saving} />
+            <Button label={editing ? 'Save changes' : 'Create meal'} onPress={save} disabled={!canSave} loading={saving} />
           </View>
         </KeyboardAvoidingView>
       )}
+
+      <Sheet visible={photoSheet} onClose={() => setPhotoSheet(false)} title="Add meal photo">
+        <SheetRow
+          title="Take photo"
+          onPress={() => {
+            setPhotoSheet(false);
+            goCapture();
+          }}
+        />
+        <SheetRow title="Choose from library" onPress={choosePhoto} />
+        {draft.photoUri ? (
+          <SheetRow
+            title="Remove photo"
+            destructive
+            onPress={() => {
+              updateDraft({ photoUri: undefined });
+              setPhotoSheet(false);
+            }}
+          />
+        ) : null}
+      </Sheet>
     </ThemedView>
   );
 }
 
-function Total({ label, value }: { label: string; value: string }) {
+function MacroTile({ label, value, color }: { label: string; value: number; color: string }) {
+  const theme = useTheme();
   return (
-    <View style={styles.total}>
-      <ThemedText type="smallBold">{value}</ThemedText>
+    <View style={[styles.macroTile, { backgroundColor: theme.background }]}>
+      <View style={[styles.macroDot, { backgroundColor: color }]} />
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
+      <ThemedText type="smallBold">{`${Math.round(value * 10) / 10}g`}</ThemedText>
     </View>
   );
 }
@@ -246,8 +317,33 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.three },
   content: { padding: Spacing.three, gap: Spacing.two },
   photo: { width: '100%', height: 180, borderRadius: 16 },
+  addPhoto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.three,
+  },
   name: { fontSize: 20, fontWeight: '600' },
+  totalsCard: { borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.two },
+  caloriesRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  caloriesValue: { fontSize: 32, lineHeight: 36, fontWeight: 700 },
+  macroRow: { flexDirection: 'row', gap: Spacing.two },
+  macroTile: { flex: 1, borderRadius: Radius.md, padding: Spacing.two + Spacing.half, gap: Spacing.half },
+  macroDot: { width: 8, height: 8, borderRadius: 4 },
+  addItems: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: Radius.pill,
+    paddingVertical: Spacing.three,
+  },
+  addItemsPlus: { fontWeight: 700 },
   footer: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth },
-  totals: { flexDirection: 'row', justifyContent: 'space-between' },
-  total: { alignItems: 'center', flex: 1 },
 });
