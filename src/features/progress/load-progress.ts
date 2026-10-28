@@ -9,6 +9,8 @@ import { lastSevenDayKeys, todayKey } from './dates';
 export const PROGRESS_TABLES: Table[] = ['meals', 'profile', 'activity_records', 'weight_records'];
 
 export const HISTORY_LENGTH = 30;
+/** Entries kept for the trend chart and change table (one per day at most). */
+export const TREND_LENGTH = 365;
 
 export interface ProgressData {
   profile: UserProfile;
@@ -20,6 +22,9 @@ export interface ProgressData {
   sevenDayEntryCount: number;
   /** One entry per day, oldest first, ending today. */
   week: DailyTotals[];
+  /** Up to a year of weight entries for the trend chart, newest first. */
+  trend: WeightRecord[];
+  today: string;
 }
 
 export async function loadProgress(): Promise<ProgressData> {
@@ -27,13 +32,14 @@ export async function loadProgress(): Promise<ProgressData> {
   const from = keys[0];
   const to = keys[keys.length - 1];
 
-  const [profile, latest, history, meals, activityByDay] = await Promise.all([
+  const [profile, trend, meals, activityByDay] = await Promise.all([
     profileRepo.get(),
-    weightRepo.list(1),
-    weightRepo.list(HISTORY_LENGTH),
+    weightRepo.list(TREND_LENGTH),
     mealsRepo.listRange(from, to),
     Promise.all(keys.map((k) => activityRepo.caloriesForDate(k))),
   ]);
+  const latest = trend.slice(0, 1);
+  const history = trend.slice(0, HISTORY_LENGTH);
 
   const week = keys.map((date, i) => dailyTotals(date, meals, profile, activityByDay[i]));
 
@@ -50,5 +56,7 @@ export async function loadProgress(): Promise<ProgressData> {
     sevenDayAverageKg,
     sevenDayEntryCount: recent.length,
     week,
+    trend,
+    today: to,
   };
 }

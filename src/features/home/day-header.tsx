@@ -14,9 +14,11 @@ interface DayHeaderProps {
   onChange: (date: DateKey) => void;
   /** Opens the conversational assistant. */
   onAssistant?: () => void;
+  /** Consecutive days logged; shown as a small pill when > 0. */
+  streak?: number;
 }
 
-export function DayHeader({ date, today, onChange, onAssistant }: DayHeaderProps) {
+export function DayHeader({ date, today, onChange, onAssistant, streak = 0 }: DayHeaderProps) {
   const theme = useTheme();
   const canGoNext = date < today;
 
@@ -32,6 +34,13 @@ export function DayHeader({ date, today, onChange, onAssistant }: DayHeaderProps
           </ThemedText>
         </View>
         <View style={styles.chevrons}>
+          {streak > 0 ? (
+            <View
+              accessibilityLabel={`${streak} day logging streak`}
+              style={[styles.streak, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="smallBold">{`🔥 ${streak}`}</ThemedText>
+            </View>
+          ) : null}
           {onAssistant ? (
             <Pressable
               accessibilityRole="button"
@@ -132,6 +141,7 @@ const styles = StyleSheet.create({
   chevron: { width: 40, height: 40, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   chevronGlyph: { width: 10, height: 10, borderTopWidth: 2, borderLeftWidth: 2 },
   spark: { fontSize: 18, lineHeight: 22 },
+  streak: { height: 40, paddingHorizontal: Spacing.two + Spacing.one, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   glyphPrev: { transform: [{ rotate: '-45deg' }, { translateX: 1 }, { translateY: 1 }] },
   glyphNext: { transform: [{ rotate: '135deg' }, { translateX: 1 }, { translateY: 1 }] },
   disabled: { opacity: 0.3 },

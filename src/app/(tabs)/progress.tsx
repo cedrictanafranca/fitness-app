@@ -4,7 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BmiCard } from '@/features/progress/components/bmi-card';
 import { LogWeightSheet } from '@/features/progress/components/log-weight-sheet';
+import { WeightTrendCard } from '@/features/progress/components/weight-trend-card';
 import { WeekCard } from '@/features/progress/components/week-card';
 import { WeightCard } from '@/features/progress/components/weight-card';
 import { loadProgress, PROGRESS_TABLES } from '@/features/progress/load-progress';
@@ -44,7 +46,9 @@ export default function ProgressScreen() {
             sevenDayEntryCount={data.sevenDayEntryCount}
             onLogWeight={() => setLogOpen(true)}
           />
+          <WeightTrendCard history={data.trend} today={data.today} units={data.profile.units} />
           <WeekCard week={data.week} proteinTarget={data.profile.proteinTarget} />
+          <BmiCard weightKg={data.currentWeight?.weightKg ?? data.profile.weightKg} heightCm={data.profile.heightCm} />
         </View>
       </ScrollView>
 

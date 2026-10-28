@@ -32,7 +32,7 @@ export function ProfileSection({
   onUnits: (units: Units) => void;
 }) {
   return (
-    <SettingsSection title="Profile">
+    <SettingsSection title="Personal details">
       <SegmentedControl options={UNIT_OPTIONS} value={draft.units} onChange={onUnits} />
 
       {draft.units === 'metric' ? (
