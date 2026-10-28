@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "fitness-app",
+    "name": "Fuel",
     "slug": "fitness-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,9 @@
     "scheme": "fitnessapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.cedrictanafranca.fitnessapp",
+      "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +19,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.cedrictanafranca.fitnessapp"
     },
     "web": {
       "output": "server",
@@ -33,8 +36,28 @@
           "imageWidth": 76
         }
       ],
-      "expo-sqlite",
-      "expo-speech-recognition"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Fuel uses the camera to photograph meals so the AI can identify what you ate.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Fuel needs photo access so you can log meals from existing pictures.",
+          "cameraPermission": "Fuel uses the camera to photograph meals."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Fuel uses the microphone so you can describe meals by voice.",
+          "speechRecognitionPermission": "Fuel transcribes your voice on-device to log meals."
+        }
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

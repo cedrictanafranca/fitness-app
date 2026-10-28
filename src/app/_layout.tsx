@@ -13,6 +13,8 @@ export default function RootLayout() {
       <AnimatedSplashOverlay />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="log" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="recipes" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );

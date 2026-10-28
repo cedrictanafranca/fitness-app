@@ -1,9 +1,11 @@
 /**
  * Client wrapper for the AI API routes in src/app/api/ai/**.
- * CONTRACT — screens depend on these signatures. The AI-service agent implements the bodies.
+ * CONTRACT — screens depend on these signatures.
  */
 
 import type { AnalyzedMeal, PortionCalibration } from '@/core/types';
+import { analyzedMealSchema, extractedRecipeSchema } from '@/server/schemas';
+import { apiFetchJson } from './api-base';
 
 export interface AnalyzeMealRequest {
   /** JPEG/PNG as base64 (no data: prefix). Optional. */
@@ -21,8 +23,19 @@ export interface AnalyzeMealRequest {
   localHour: number;
 }
 
-export async function analyzeMeal(_req: AnalyzeMealRequest): Promise<AnalyzedMeal> {
-  throw new Error('analyzeMeal not implemented yet');
+function postJson(path: string, body: unknown): Promise<unknown> {
+  return apiFetchJson(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function analyzeMeal(req: AnalyzeMealRequest): Promise<AnalyzedMeal> {
+  const raw = await postJson('/api/ai/analyze-meal', req);
+  const parsed = analyzedMealSchema.safeParse(raw);
+  if (!parsed.success) throw new Error('The server returned an unexpected meal analysis.');
+  return parsed.data;
 }
 
 export interface ExtractRecipeRequest {
@@ -49,6 +62,9 @@ export interface ExtractedRecipe {
   clarification: string | null;
 }
 
-export async function extractRecipe(_req: ExtractRecipeRequest): Promise<ExtractedRecipe> {
-  throw new Error('extractRecipe not implemented yet');
+export async function extractRecipe(req: ExtractRecipeRequest): Promise<ExtractedRecipe> {
+  const raw = await postJson('/api/ai/extract-recipe', req);
+  const parsed = extractedRecipeSchema.safeParse(raw);
+  if (!parsed.success) throw new Error('The server returned an unexpected recipe.');
+  return parsed.data;
 }

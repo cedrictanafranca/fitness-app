@@ -1,98 +1,74 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
+import { Button, EstimateBadge } from '@/components/ui';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { toDateKey } from '@/core/nutrition/engine';
+import { CalorieHero, DayHeader, MacroRow, MealList, useDailySummary } from '@/features/home';
 
 export default function HomeScreen() {
+  const today = toDateKey(new Date());
+  const [date, setDate] = useState(today);
+  const { meals, totals, loading, error, refresh } = useDailySummary(date);
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <ThemedView style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}>
+          <View style={styles.column}>
+            <DayHeader date={date} today={today} onChange={setDate} />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+            {loading ? (
+              <View style={styles.center} accessibilityLabel="Loading">
+                <ActivityIndicator />
+              </View>
+            ) : error != null ? (
+              <View style={styles.center}>
+                <ThemedText type="default" style={styles.errorTitle}>
+                  Couldn&apos;t load your day
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.errorBody}>
+                  {error.message}
+                </ThemedText>
+                <Button label="Try again" variant="secondary" small onPress={refresh} />
+              </View>
+            ) : (
+              <>
+                <CalorieHero totals={totals} />
+                <MacroRow totals={totals} />
+                {totals.hasEstimates && (
+                  <View style={styles.estimateRow}>
+                    <EstimateBadge status="estimated" label="Some entries are estimates" />
+                  </View>
+                )}
+                <MealList meals={meals} />
+              </>
+            )}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+  root: { flex: 1 },
+  safe: { flex: 1 },
+  content: {
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.five,
   },
+  column: { width: '100%', maxWidth: MaxContentWidth, gap: Spacing.three },
+  center: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.six },
+  errorTitle: { fontWeight: 700 },
+  errorBody: { textAlign: 'center' },
+  estimateRow: { alignItems: 'center' },
 });

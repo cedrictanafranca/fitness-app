@@ -5,7 +5,20 @@
 
 import * as SQLite from 'expo-sqlite';
 
+import { notify, type Table } from './events';
+
 const DB_NAME = 'fitness.db';
+
+const ALL_TABLES: Table[] = [
+  'activity_records',
+  'weight_records',
+  'calibrations',
+  'meals',
+  'recipe_batches',
+  'recipes',
+  'foods',
+  'profile',
+];
 
 const migrations: string[] = [
   // v1
@@ -63,4 +76,5 @@ export async function resetDatabase(): Promise<void> {
     DELETE FROM meals; DELETE FROM recipe_batches; DELETE FROM recipes; DELETE FROM foods;
     DELETE FROM profile;
   `);
+  for (const t of ALL_TABLES) notify(t);
 }
