@@ -17,7 +17,9 @@ import type {
   WeightRecord,
 } from '@/core/types';
 
+import { resetDatabase } from './db';
 import { docTable } from './doc-table';
+import { notify } from './events';
 import { newId, nowIso } from './ids';
 
 // ---------- Profile ----------
@@ -261,3 +263,24 @@ export const activityRepo = {
     return activityTable.upsert({ ...input, id: newId() });
   },
 };
+
+// ---------- Dev helpers ----------
+
+/**
+ * Development only: expose the repositories as `globalThis.__fuel` so QA can seed or inspect
+ * the on-device database from the web preview's console (e.g. meals dated in the past, which
+ * the Log flow never creates). Stripped from production builds by the `__DEV__` check.
+ */
+if (__DEV__) {
+  (globalThis as unknown as { __fuel?: unknown }).__fuel = {
+    profileRepo,
+    foodsRepo,
+    recipesRepo,
+    mealsRepo,
+    calibrationsRepo,
+    weightRepo,
+    activityRepo,
+    resetDatabase,
+    notify,
+  };
+}

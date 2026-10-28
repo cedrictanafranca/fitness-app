@@ -15,6 +15,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="log" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="recipes" options={{ headerShown: false }} />
+        <Stack.Screen name="assistant" options={{ presentation: 'modal', title: 'Assistant' }} />
       </Stack>
     </ThemeProvider>
   );
