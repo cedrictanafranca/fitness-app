@@ -71,6 +71,9 @@ src/
 ## Status
 
 Phase 1 (MVP) is implemented: dashboard, universal log flow, food search + custom foods, family
-recipes with batches and portion calibration, settings, weight log. Apple Health / Apple Watch
+recipes with batches and portion calibration, settings, weight log. Phase 2's conversational
+assistant (✦ on Home, or "Ask the assistant" on Log) answers questions about your log and proposes
+structured changes that the app applies through the repositories; without `ANTHROPIC_API_KEY` it
+runs an offline rule-based mode (see `docs/API.md`, `POST /api/ai/chat`). Apple Health / Apple Watch
 integration is Phase 3 and not yet wired — activity credit settings exist but no activity data is
 imported. See `docs/PLAN.md` for the phase roadmap.

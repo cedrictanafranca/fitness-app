@@ -34,6 +34,10 @@ interface StructuredCall<S extends z.ZodType> {
   image?: ImageInput;
   schema: S;
   maxTokens?: number;
+  /** Multi-turn history; when set, `text`/`image` are appended as the final user turn only if `text` is non-empty. */
+  history?: Anthropic.Beta.BetaMessageParam[];
+  /** Reasoning depth. Extraction uses 'low'; the assistant uses 'medium'. */
+  effort?: 'low' | 'medium' | 'high';
 }
 
 /**
@@ -50,7 +54,9 @@ export async function callStructured<S extends z.ZodType>(call: StructuredCall<S
       source: { type: 'base64', media_type: call.image.mimeType, data: call.image.base64 },
     });
   }
-  content.push({ type: 'text', text: call.text });
+  if (call.text) content.push({ type: 'text', text: call.text });
+  const messages: Anthropic.Beta.BetaMessageParam[] = [...(call.history ?? [])];
+  if (content.length) messages.push({ role: 'user', content });
 
   let response: Anthropic.Beta.BetaMessage;
   try {
@@ -58,9 +64,9 @@ export async function callStructured<S extends z.ZodType>(call: StructuredCall<S
       model: ANTHROPIC_MODEL,
       max_tokens: call.maxTokens ?? 8000,
       system: call.system,
-      messages: [{ role: 'user', content }],
+      messages,
       // Low effort keeps extraction fast and deterministic; sampling params are not accepted on this model.
-      output_config: { effort: 'low', format: zodOutputFormat(call.schema) },
+      output_config: { effort: call.effort ?? 'low', format: zodOutputFormat(call.schema) },
       // Opt-in server-side retry on a substitute model if the request is declined for policy reasons.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',

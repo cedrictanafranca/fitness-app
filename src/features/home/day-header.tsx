@@ -12,9 +12,11 @@ interface DayHeaderProps {
   date: DateKey;
   today: DateKey;
   onChange: (date: DateKey) => void;
+  /** Opens the conversational assistant. */
+  onAssistant?: () => void;
 }
 
-export function DayHeader({ date, today, onChange }: DayHeaderProps) {
+export function DayHeader({ date, today, onChange, onAssistant }: DayHeaderProps) {
   const theme = useTheme();
   const canGoNext = date < today;
 
@@ -30,6 +32,16 @@ export function DayHeader({ date, today, onChange }: DayHeaderProps) {
           </ThemedText>
         </View>
         <View style={styles.chevrons}>
+          {onAssistant ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open assistant"
+              hitSlop={6}
+              onPress={onAssistant}
+              style={({ pressed }) => [styles.chevron, { backgroundColor: theme.primary }, pressed && styles.pressed]}>
+              <ThemedText style={[styles.spark, { color: theme.onPrimary }]}>✦</ThemedText>
+            </Pressable>
+          ) : null}
           <ChevronButton direction="prev" label="Previous day" onPress={() => onChange(shiftDateKey(date, -1))} />
           <ChevronButton
             direction="next"
@@ -119,6 +131,7 @@ const styles = StyleSheet.create({
   chevrons: { flexDirection: 'row', gap: Spacing.two },
   chevron: { width: 40, height: 40, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   chevronGlyph: { width: 10, height: 10, borderTopWidth: 2, borderLeftWidth: 2 },
+  spark: { fontSize: 18, lineHeight: 22 },
   glyphPrev: { transform: [{ rotate: '-45deg' }, { translateX: 1 }, { translateY: 1 }] },
   glyphNext: { transform: [{ rotate: '135deg' }, { translateX: 1 }, { translateY: 1 }] },
   disabled: { opacity: 0.3 },

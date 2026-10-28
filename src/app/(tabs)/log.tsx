@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +20,8 @@ import { useTheme } from '@/hooks/use-theme';
 import type { Meal } from '@/core/types';
 import { pickFromLibrary } from '@/services/camera';
 import { useSpeechToText } from '@/services/speech';
+
+const ASSISTANT_HREF = '/assistant' as unknown as Href;
 
 export default function LogScreen() {
   const theme = useTheme();
@@ -213,6 +216,7 @@ export default function LogScreen() {
           <View style={styles.secondary}>
             <Button label="Search food" variant="secondary" onPress={searchFood} />
             <Button label="Repeat a recent meal" variant="secondary" onPress={() => setRecentSheet(true)} />
+            <Button label="Ask the assistant" variant="secondary" onPress={() => router.push(ASSISTANT_HREF)} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

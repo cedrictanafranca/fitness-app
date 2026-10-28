@@ -1,3 +1,4 @@
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +9,9 @@ import { Button, EstimateBadge } from '@/components/ui';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { toDateKey } from '@/core/nutrition/engine';
 import { CalorieHero, DayHeader, MacroRow, MealList, useDailySummary } from '@/features/home';
+
+/** Cast because typed-route definitions regenerate when the dev server runs. */
+const ASSISTANT_HREF = '/assistant' as unknown as Href;
 
 export default function HomeScreen() {
   const today = toDateKey(new Date());
@@ -22,7 +26,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}>
           <View style={styles.column}>
-            <DayHeader date={date} today={today} onChange={setDate} />
+            <DayHeader date={date} today={today} onChange={setDate} onAssistant={() => router.push(ASSISTANT_HREF)} />
 
             {loading ? (
               <View style={styles.center} accessibilityLabel="Loading">
