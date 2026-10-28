@@ -1,56 +1,76 @@
-# Welcome to your Expo app 👋
+# Fuel — personal AI nutrition & fitness tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Log meals with any mix of **photo, text, voice, and measured weight**. Claude identifies the
+foods; the app computes nutrition deterministically from USDA / Open Food Facts / your own
+family recipes, and keeps a calorie + protein dashboard up to date. Built with Expo (SDK 58),
+Expo Router, TypeScript and SQLite.
 
-## Get started
+Product requirements: [docs/PRD.md](docs/PRD.md). Build plan and agent assignments:
+[docs/PLAN.md](docs/PLAN.md). API routes: [docs/API.md](docs/API.md).
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env   # then fill in the keys below
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+| Variable | Required for | Where to get it |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | AI meal analysis and recipe extraction | https://console.anthropic.com |
+| `USDA_API_KEY` | USDA FoodData Central search (Open Food Facts needs no key) | https://fdc.nal.usda.gov/api-key-signup |
+| `EXPO_PUBLIC_API_URL` | Optional. Absolute origin of the API routes when not using the Metro dev server | — |
 
-### Other setup steps
+Keys are read only by the server-side API routes in `src/app/api/**` and never ship in the app
+bundle. `GET /api/health` reports which keys are configured.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Running
 
-## Learn more
+**On your iPhone with Expo Go (fastest, no Xcode):**
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Scan the QR code with Expo Go. Camera, photo library, SQLite and the dashboard all work.
+On-device speech recognition needs a native module, so the mic button is hidden in Expo Go.
 
-## Join the community
+**Dev build (full features, needs Xcode or Android Studio):**
 
-Join our community of developers creating universal apps.
+```bash
+npx expo run:ios
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+**Web preview:**
+
+```bash
+npx expo start --web
+```
+
+## Checks
+
+```bash
+npm run typecheck   # tsc
+npm run lint        # eslint
+npm test            # vitest — nutrition engine + food normalizers
+```
+
+## Layout
+
+```
+src/
+  app/            Expo Router: (tabs)/ Home · Log · Recipes · Progress · Settings; log/ and recipes/ stacks; api/ server routes
+  core/           Pure TS domain: types, deterministic nutrition engine (+ tests)
+  data/           SQLite migrations, JSON-document repositories, live-query hook
+  server/         Claude client, prompts, zod schemas, USDA/OFF normalizers (server only)
+  services/       Client wrappers: ai, foods, camera, speech, api-base
+  features/       Screen components and hooks per tab
+  components/ui/  Shared primitives (Ring, MacroCard, Button, Sheet, EstimateBadge…)
+```
+
+## Status
+
+Phase 1 (MVP) is implemented: dashboard, universal log flow, food search + custom foods, family
+recipes with batches and portion calibration, settings, weight log. Apple Health / Apple Watch
+integration is Phase 3 and not yet wired — activity credit settings exist but no activity data is
+imported. See `docs/PLAN.md` for the phase roadmap.

@@ -24,7 +24,7 @@ import { newId, nowIso } from './ids';
 
 export const DEFAULT_PROFILE: UserProfile = {
   id: 'me',
-  heightCm: 175,
+  heightCm: 175.3, // 5'9"
   weightKg: 67.6,
   goal: 'recomposition',
   calorieTarget: 2500,
@@ -235,6 +235,7 @@ export const weightRepo = {
 
 const activityTable = docTable<ActivityRecord>('activity_records', (a) => ({
   date: a.date,
+  timestamp: a.timestamp,
   external_id: a.externalId ?? null,
 }));
 

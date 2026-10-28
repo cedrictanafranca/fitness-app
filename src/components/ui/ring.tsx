@@ -46,8 +46,7 @@ export function Ring({ size, stroke, progress, color, trackColor, children, styl
             fill="none"
             strokeDasharray={`${circumference} ${circumference}`}
             strokeDashoffset={circumference * (1 - clamped)}
-            rotation={-90}
-            origin={`${center}, ${center}`}
+            transform={`rotate(-90 ${center} ${center})`}
           />
         )}
       </Svg>

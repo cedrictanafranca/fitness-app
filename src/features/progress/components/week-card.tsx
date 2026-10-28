@@ -5,7 +5,6 @@ import { averageOverDays } from '@/core/nutrition/engine';
 import type { DailyTotals } from '@/core/types';
 import { useTheme } from '@/hooks/use-theme';
 
-import { CALORIE_COLOR, PROTEIN_COLOR } from '../palette';
 import { weekdayInitial } from '../dates';
 import { Card } from './card';
 import { ProteinBars, type DayBar } from './protein-bars';
@@ -29,8 +28,8 @@ export function WeekCard({ week, proteinTarget }: { week: DailyTotals[]; protein
   return (
     <Card title="This week" caption="Last 7 days">
       <View style={styles.statRow}>
-        <Stat label="Avg calories" value={loggedDays > 0 ? `${formatInt(avgCalories)} kcal` : '—'} color={CALORIE_COLOR} />
-        <Stat label="Avg protein" value={loggedDays > 0 ? `${Math.round(avgProtein)} g` : '—'} color={PROTEIN_COLOR} />
+        <Stat label="Avg calories" value={loggedDays > 0 ? `${formatInt(avgCalories)} kcal` : '—'} color={theme.calories} />
+        <Stat label="Avg protein" value={loggedDays > 0 ? `${Math.round(avgProtein)} g` : '—'} color={theme.protein} />
         <Stat label="Days logged" value={`${loggedDays} of ${week.length}`} color={theme.text} />
       </View>
 

@@ -3,8 +3,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 
-import { PROTEIN_COLOR } from '../palette';
-
 export interface DayBar {
   key: string;
   label: string;
@@ -43,7 +41,7 @@ export function ProteinBars({ days, target }: { days: DayBar[]; target: number }
                   styles.bar,
                   {
                     height: Math.max(barHeight, hasValue ? 2 : 0),
-                    backgroundColor: hasValue ? PROTEIN_COLOR : theme.backgroundSelected,
+                    backgroundColor: hasValue ? theme.protein : theme.backgroundSelected,
                   },
                 ]}
               />

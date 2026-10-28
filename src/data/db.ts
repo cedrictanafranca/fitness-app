@@ -47,6 +47,8 @@ const migrations: string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_activity_date ON activity_records(date);
   `,
+  // v2: activity records are ordered within a day
+  `ALTER TABLE activity_records ADD COLUMN timestamp TEXT NOT NULL DEFAULT '';`,
 ];
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
