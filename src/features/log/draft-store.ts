@@ -5,6 +5,7 @@
 
 import { sumMacros, roundMacros, inferMealType } from '@/core/nutrition/engine';
 import { withGrams } from '@/core/nutrition/build';
+import { distributePlateWeight, scaleGrams, type TypicalPortion } from '@/core/nutrition/portions';
 import type { Macros, Meal, MealItem, MealType } from '@/core/types';
 import { ZERO_MACROS } from '@/core/types';
 import { newId } from '@/data/ids';
@@ -27,6 +28,8 @@ export interface LogDraft {
   clarification: string | null;
   notes: string | null;
   items: MealItem[];
+  /** "You usually log 180 g" per draft item id, from measured history. Display only. */
+  portionHints?: Record<string, TypicalPortion>;
 }
 
 export function emptyDraft(patch: Partial<LogDraft> = {}): LogDraft {
@@ -75,8 +78,57 @@ export function setDraftItemGrams(id: string, grams: number | undefined) {
         return { ...i, grams: undefined, quantity: undefined, unitLabel: undefined, totals: { ...ZERO_MACROS } };
       }
       const next = withGrams(i, grams);
-      return { ...next, estimateStatus: i.source === 'ai_estimate' ? 'estimated' : 'measured' };
+      return {
+        ...next,
+        estimateStatus: i.source === 'ai_estimate' ? 'estimated' : 'measured',
+        gramsRange: undefined,
+        portionBasis: undefined,
+      };
     }),
+  }));
+}
+
+/**
+ * The user adjusted an estimate without weighing ("more like 1½ of that", "my usual
+ * portion"): the item stays estimated and its range moves with it.
+ */
+export function setDraftItemEstimate(id: string, grams: number, basis: string) {
+  draftStore.set((d) => ({
+    ...d,
+    items: d.items.map((i) => {
+      if (i.id !== id || !(grams > 0)) return i;
+      const factor = i.grams && i.grams > 0 ? grams / i.grams : 1;
+      const range = i.gramsRange
+        ? { low: scaleGrams(i.gramsRange.low, factor), high: scaleGrams(i.gramsRange.high, factor) }
+        : undefined;
+      return { ...withGrams(i, grams), estimateStatus: 'estimated', gramsRange: range, portionBasis: basis };
+    }),
+  }));
+}
+
+export function scaleDraftItemGrams(id: string, factor: number) {
+  const item = draftStore.get().items.find((i) => i.id === id);
+  if (!item || item.grams == null || !(item.grams > 0)) return;
+  setDraftItemEstimate(id, scaleGrams(item.grams, factor), `${item.portionBasis ?? 'estimate'}, adjusted`);
+}
+
+/**
+ * Split the weighed plate across the items in proportion to their current estimates.
+ * The parts are still estimates (PRD 3.2: a clearly-labeled approximate breakdown).
+ */
+export function applyPlateSplit() {
+  const d = draftStore.get();
+  const total = d.statedTotalGrams;
+  if (total == null || !(total > 0) || d.items.length < 2) return;
+  const parts = distributePlateWeight(d.items.map((i) => i.grams ?? null), total);
+  draftStore.set((s) => ({
+    ...s,
+    items: s.items.map((i, idx) => ({
+      ...withGrams(i, parts[idx]),
+      estimateStatus: 'estimated',
+      gramsRange: undefined,
+      portionBasis: `share of the ${Math.round(total)} g plate`,
+    })),
   }));
 }
 

@@ -21,6 +21,8 @@ export interface AnalyzeMealRequest {
   calibrations: Pick<PortionCalibration, 'name' | 'foodName' | 'grams'>[];
   /** Local hour 0–23, to help infer mealType. */
   localHour: number;
+  /** The user's usual measured weights for foods they log often (from `typicalPortions`). */
+  recentPortions?: { name: string; grams: number }[];
 }
 
 function postJson(path: string, body: unknown): Promise<unknown> {

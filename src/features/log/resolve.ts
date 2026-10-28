@@ -6,6 +6,7 @@
 
 import { buildMealItem } from '@/core/nutrition/build';
 import { findCalibration, normalizeUnit, recipeNutrition } from '@/core/nutrition/engine';
+import { choosePortion, typicalGramsFor } from '@/core/nutrition/portions';
 import type {
   AnalyzedMeal,
   AnalyzedMealItem,
@@ -29,6 +30,8 @@ export interface ResolveContext {
   statedTotalGrams?: number;
   /** Existing meal id (edit mode); drafts for new meals use ''. */
   mealId?: string;
+  /** Recently logged items; measured ones supply the user's usual portion for each food. */
+  recentItems?: MealItem[];
 }
 
 interface Basis {
@@ -133,9 +136,23 @@ async function resolveItem(
       status = 'measured';
     }
   }
-  if (grams == null && unitGrams == null && item.estimatedGrams != null && item.estimatedGrams > 0) {
-    grams = item.estimatedGrams;
-    status = 'estimated';
+  let gramsRange: MealItem['gramsRange'];
+  let portionBasis: string | undefined;
+  if (grams == null && unitGrams == null) {
+    // No measured basis: the user's own history or the AI's visual estimate, with a range.
+    const chosen = choosePortion({
+      aiGrams: item.estimatedGrams,
+      aiConfidence: item.confidence,
+      aiRange: item.gramsRange,
+      aiBasis: item.portionBasis,
+      typical: ctx.recentItems ? typicalGramsFor(ctx.recentItems, item.name) : null,
+    });
+    if (chosen) {
+      grams = chosen.grams;
+      gramsRange = chosen.range;
+      portionBasis = chosen.label;
+      status = 'estimated';
+    }
   }
   // An AI-estimated nutrition source is never "measured", whatever the quantity basis.
   if (resolved.source === 'ai_estimate') status = 'estimated';
@@ -159,7 +176,8 @@ async function resolveItem(
       estimateStatus: 'estimated',
     };
   }
-  return buildMealItem({ ...base, estimateStatus: status, grams, quantity, unitLabel, unitGrams });
+  const built = buildMealItem({ ...base, estimateStatus: status, grams, quantity, unitLabel, unitGrams });
+  return status === 'estimated' && gramsRange ? { ...built, gramsRange, portionBasis } : built;
 }
 
 export async function resolveAnalyzedMeal(analyzed: AnalyzedMeal, ctx: ResolveContext): Promise<MealItem[]> {

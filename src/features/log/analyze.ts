@@ -1,5 +1,7 @@
 import { inferMealType } from '@/core/nutrition/engine';
-import { calibrationsRepo, recipesRepo } from '@/data/repos';
+import { typicalGramsFor, typicalPortions } from '@/core/nutrition/portions';
+import type { TypicalPortion } from '@/core/nutrition/portions';
+import { calibrationsRepo, mealsRepo, recipesRepo } from '@/data/repos';
 import { analyzeMeal } from '@/services/ai';
 
 import type { Composer } from './composer-store';
@@ -13,7 +15,13 @@ export async function analyzeComposer(c: Composer): Promise<LogDraft> {
   const now = new Date();
   const text = c.text.trim();
   const statedTotalGrams = parseGrams(c.gramsText);
-  const [recipes, calibrations] = await Promise.all([recipesRepo.list(), calibrationsRepo.list()]);
+  const [recipes, calibrations, recentMeals] = await Promise.all([
+    recipesRepo.list(),
+    calibrationsRepo.list(),
+    mealsRepo.listRecent(60),
+  ]);
+  const recentItems = recentMeals.flatMap((m) => m.items);
+  const usual = typicalPortions(recentMeals);
 
   const analyzed = await analyzeMeal({
     imageBase64: c.photo?.base64,
@@ -23,6 +31,7 @@ export async function analyzeComposer(c: Composer): Promise<LogDraft> {
     recipeNames: recipes.map((r) => r.name),
     calibrations: calibrations.map((x) => ({ name: x.name, foodName: x.foodName, grams: x.grams })),
     localHour: now.getHours(),
+    recentPortions: usual.map((u) => ({ name: u.name, grams: u.grams })),
   });
 
   if (analyzed.items.length === 0) {
@@ -31,7 +40,14 @@ export async function analyzeComposer(c: Composer): Promise<LogDraft> {
     );
   }
 
-  const items = await resolveAnalyzedMeal(analyzed, { recipes, calibrations, statedTotalGrams });
+  const items = await resolveAnalyzedMeal(analyzed, { recipes, calibrations, statedTotalGrams, recentItems });
+
+  // "You usually log 180 g" hints for the review screen, keyed by draft item id.
+  const portionHints: Record<string, TypicalPortion> = {};
+  for (const item of items) {
+    const t = typicalGramsFor(recentItems, item.name);
+    if (t) portionHints[item.id] = t;
+  }
 
   return emptyDraft({
     mealType: c.mealTypeTouched ? c.mealType : (analyzed.mealType ?? inferMealType(now)),
@@ -41,5 +57,6 @@ export async function analyzeComposer(c: Composer): Promise<LogDraft> {
     clarification: analyzed.clarification,
     notes: analyzed.notes,
     items,
+    portionHints,
   });
 }

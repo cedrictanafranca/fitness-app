@@ -1,6 +1,7 @@
 /** Post-processing of model output: enforce ranges and PRD invariants the prompt can only request. Pure. */
 
 import type { z } from 'zod';
+import { sanitizeRange } from '../core/nutrition/portions';
 import type { analyzeMealRequestSchema, analyzedMealSchema, extractedRecipeSchema } from './schemas';
 
 type AnalyzeInput = z.infer<typeof analyzeMealRequestSchema>;
@@ -59,6 +60,8 @@ export function sanitizeAnalyzedMeal(meal: Analyzed, input: AnalyzeInput): Analy
         p.calories <= 900
           ? { calories: round1(p.calories), protein: round1(p.protein), carbs: round1(p.carbs), fat: round1(p.fat) }
           : null;
+      // A range only makes sense around an estimate the model actually produced.
+      const gramsRange = estimatedGrams !== null ? sanitizeRange(i.gramsRange, estimatedGrams) : null;
       return {
         name: i.name.trim(),
         estimatedGrams,
@@ -68,6 +71,8 @@ export function sanitizeAnalyzedMeal(meal: Analyzed, input: AnalyzeInput): Analy
         recipeMatch: i.recipeMatch !== null && input.recipeNames.includes(i.recipeMatch) ? i.recipeMatch : null,
         confidence: clamp01(i.confidence),
         estimatedPer100g: per100,
+        gramsRange,
+        portionBasis: estimatedGrams !== null ? nonEmpty(i.portionBasis)?.slice(0, 80) ?? null : null,
       };
     });
   return {

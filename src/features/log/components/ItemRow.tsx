@@ -3,28 +3,48 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { PORTION_ADJUSTMENTS, type TypicalPortion } from '@/core/nutrition/portions';
 import { useTheme } from '@/hooks/use-theme';
 import type { MealItem } from '@/core/types';
 
 import { SOURCE_LABELS, formatGrams, macroLine } from '../format';
-import { Badge, Card, TextField } from './ui';
+import { Badge, Card, Chip, TextField } from './ui';
 
 interface Props {
   item: MealItem;
+  /** The user's usual measured weight for this food, when known. */
+  hint?: TypicalPortion;
   onGramsChange: (id: string, grams: number | undefined) => void;
+  /** Quick adjustment of an estimate (stays estimated). */
+  onScale?: (id: string, factor: number) => void;
+  /** Adopt a suggested estimate such as the usual portion (stays estimated). */
+  onUseEstimate?: (id: string, grams: number, basis: string) => void;
   onRemove: (id: string) => void;
 }
 
-function ItemRowImpl({ item, onGramsChange, onRemove }: Props) {
+function parseGramsText(t: string): number | undefined {
+  const n = Number(t.replace(',', '.'));
+  return t.trim() === '' || !Number.isFinite(n) ? undefined : n;
+}
+
+function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemove }: Props) {
   const theme = useTheme();
   const [text, setText] = useState(formatGrams(item.grams));
+  // Keep the field in sync when grams change from outside (chips, plate split), without
+  // clobbering a weight the user is still typing.
+  const [seenGrams, setSeenGrams] = useState(item.grams);
+  if (item.grams !== seenGrams) {
+    setSeenGrams(item.grams);
+    if (parseGramsText(text) !== item.grams) setText(formatGrams(item.grams));
+  }
   const missing = item.grams == null || !(item.grams > 0);
+  const estimated = item.estimateStatus === 'estimated' && !missing;
+  const showUsual = hint != null && (item.grams == null || Math.abs(hint.grams - item.grams) / hint.grams > 0.1);
   const noNutrition = item.source === 'ai_estimate' && item.per100g.calories === 0 && item.per100g.protein === 0;
 
   const change = (t: string) => {
     setText(t);
-    const n = Number(t.replace(',', '.'));
-    onGramsChange(item.id, t.trim() === '' || !Number.isFinite(n) ? undefined : n);
+    onGramsChange(item.id, parseGramsText(t));
   };
 
   return (
@@ -72,6 +92,33 @@ function ItemRowImpl({ item, onGramsChange, onRemove }: Props) {
           {macroLine(item.totals)}
         </ThemedText>
       )}
+
+      {estimated ? (
+        <ThemedText type="small" themeColor="textSecondary" accessibilityLabel={`Estimate range for ${item.name}`}>
+          {[
+            item.gramsRange ? `Likely ${Math.round(item.gramsRange.low)}–${Math.round(item.gramsRange.high)} g` : null,
+            item.portionBasis ? `based on ${item.portionBasis}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || 'Estimated weight — weigh it or adjust below.'}
+        </ThemedText>
+      ) : null}
+
+      {(estimated && onScale) || (showUsual && onUseEstimate) ? (
+        <View style={styles.chips}>
+          {showUsual && onUseEstimate ? (
+            <Chip
+              label={`Usually ${Math.round(hint!.grams)} g`}
+              onPress={() => onUseEstimate(item.id, hint!.grams, `your usual portion (${hint!.samples} ${hint!.samples === 1 ? 'entry' : 'entries'})`)}
+            />
+          ) : null}
+          {estimated && onScale
+            ? PORTION_ADJUSTMENTS.map((a) => (
+                <Chip key={a.label} label={a.label} onPress={() => onScale(item.id, a.factor)} />
+              ))
+            : null}
+        </View>
+      ) : null}
       {noNutrition ? (
         <ThemedText type="small" style={{ color: '#C27A12' }}>
           No nutrition data found for this item. Remove it and add it from search.
@@ -100,6 +147,7 @@ const styles = StyleSheet.create({
   titleCol: { flex: 1, gap: Spacing.one },
   badges: { flexDirection: 'row', gap: Spacing.one, flexWrap: 'wrap' },
   gramsCol: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one, paddingTop: Spacing.one },
   grams: { width: 84, textAlign: 'right', minHeight: 44 },
   remove: { alignSelf: 'flex-end', paddingTop: Spacing.one },
 });
