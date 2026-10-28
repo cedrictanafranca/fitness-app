@@ -41,26 +41,39 @@ Request (`AnalyzeMealRequest`):
   "statedTotalGrams": 450,
   "recipeNames": ["Mom's chicken adobo"],
   "calibrations": [{ "name": "scoop", "foodName": "rice", "grams": 145 }],
-  "localHour": 13
+  "localHour": 13,
+  "recentPortions": [{ "name": "white rice, cooked", "grams": 160 }]
 }
 ```
-At least one of `imageBase64` / `text` is required. `recipeNames` and `calibrations` default to `[]`.
+At least one of `imageBase64` / `text` is required. `recipeNames`, `calibrations` and `recentPortions` default to `[]`.
+`recentPortions` are the user's usual *measured* weights per food (`typicalPortions` in `src/core/nutrition/portions.ts`),
+so visual estimates anchor on their habits.
 
 Response (`AnalyzedMeal`, see `src/core/types.ts`):
 ```json
 {
   "items": [
     { "name": "chicken adobo", "estimatedGrams": null, "statedGrams": 200, "quantity": null, "unitLabel": null,
-      "recipeMatch": "Mom's chicken adobo", "confidence": 0.9, "estimatedPer100g": null },
+      "recipeMatch": "Mom's chicken adobo", "confidence": 0.9, "estimatedPer100g": null,
+      "gramsRange": null, "portionBasis": null },
     { "name": "white rice, cooked", "estimatedGrams": 290, "statedGrams": null, "quantity": 2, "unitLabel": "scoop",
-      "recipeMatch": null, "confidence": 0.9, "estimatedPer100g": null }
+      "recipeMatch": null, "confidence": 0.9, "estimatedPer100g": null,
+      "gramsRange": { "low": 240, "high": 340 }, "portionBasis": "2 calibrated scoops" }
   ],
   "mealType": "lunch", "clarification": null, "notes": null
 }
 ```
 Guarantees enforced server-side regardless of model output: `statedGrams` is dropped when no text was sent;
 `recipeMatch` must be one of `recipeNames` (exact string); `estimatedGrams` is filled from a matching calibration
-(`quantity x grams`) if the model left it null; confidence clamped to 0-1; implausible `estimatedPer100g` dropped.
+(`quantity x grams`) if the model left it null; confidence clamped to 0-1; implausible `estimatedPer100g` dropped;
+`gramsRange` is ordered, widened to include `estimatedGrams`, and dropped (with `portionBasis`) when there is no estimate.
+
+**Portion estimation on the client** (`src/features/log/resolve.ts` + `src/core/nutrition/portions.ts`): when an item has
+no measured basis (stated grams, calibrated unit, known serving), `choosePortion` takes the user's usual measured weight
+for that food when the visual estimate is missing or weak (confidence < 0.6), otherwise the visual estimate; either way the
+item is `estimated` and carries `gramsRange` + `portionBasis`, which the review screen shows with quick ½/¾/1¼/1½/2× chips
+and a "Usually N g" chip. A weighed plate with several items is never split silently; the review screen offers to split
+it in proportion to the estimates (still labeled estimated).
 
 ## `POST /api/ai/extract-recipe`
 

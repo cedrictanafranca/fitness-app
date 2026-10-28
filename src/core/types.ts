@@ -109,6 +109,14 @@ export interface RecipeBatch {
   createdAt: string;
 }
 
+// ---------- Portion estimates ----------
+
+/** Plausible gram range for a visually/descriptively estimated portion. */
+export interface PortionRange {
+  low: number;
+  high: number;
+}
+
 // ---------- Meals ----------
 
 export type MealItemRef =
@@ -134,6 +142,10 @@ export interface MealItem {
   estimateStatus: EstimateStatus;
   /** 0–1 from the AI, when the item came from photo/text analysis. */
   confidence?: number;
+  /** Plausible range around an estimated weight. Cleared once the user enters a weight. */
+  gramsRange?: PortionRange;
+  /** What the estimate was anchored to, e.g. "standard dinner plate", "your usual portion". */
+  portionBasis?: string;
 }
 
 export interface Meal {
@@ -222,6 +234,10 @@ export interface AnalyzedMealItem {
   confidence: number;
   /** Per-100 g fallback the model proposes when no database match exists. Always labeled ai_estimate. */
   estimatedPer100g: Macros | null;
+  /** Plausible low/high grams around estimatedGrams; null when the model has no basis. */
+  gramsRange: PortionRange | null;
+  /** Short note on the visual reference used ("standard 26 cm plate", "fork for scale"). */
+  portionBasis: string | null;
 }
 
 export interface AnalyzedMeal {

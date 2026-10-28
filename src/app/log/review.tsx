@@ -15,12 +15,15 @@ import { ItemRow } from '@/features/log/components/ItemRow';
 import { MealTypeChips } from '@/features/log/components/MealTypeChips';
 import { Button, Notice, SectionLabel, TextField } from '@/features/log/components/ui';
 import {
+  applyPlateSplit,
   defaultMealName,
   draftTotals,
   itemsMissingGrams,
   loadMealIntoDraft,
   removeDraftItem,
   resetDraft,
+  scaleDraftItemGrams,
+  setDraftItemEstimate,
   setDraftItemGrams,
   updateDraft,
   useDraft,
@@ -74,7 +77,10 @@ export default function ReviewScreen() {
   const showPlate = draft.statedTotalGrams != null && draft.items.length > 1;
 
   const onGrams = useCallback((id: string, g: number | undefined) => setDraftItemGrams(id, g), []);
+  const onScale = useCallback((id: string, factor: number) => scaleDraftItemGrams(id, factor), []);
+  const onUseEstimate = useCallback((id: string, g: number, basis: string) => setDraftItemEstimate(id, g, basis), []);
   const onRemove = useCallback((id: string) => removeDraftItem(id), []);
+  const plateMismatch = showPlate && Math.abs(plateSum - draft.statedTotalGrams!) > 0.5;
 
   const save = async () => {
     if (savingRef.current || !canSave) return;
@@ -163,8 +169,14 @@ export default function ReviewScreen() {
               </Notice>
             ) : null}
             {showPlate ? (
-              <Notice tone="warn" title={`Plate weighed ${round1(draft.statedTotalGrams!)} g`}>
-                {`We don't split a plate weight across items. Item weights below are estimates until you edit them. They add up to ${round1(plateSum)} g.`}
+              <Notice
+                tone={plateMismatch ? 'warn' : 'good'}
+                title={`Plate weighed ${round1(draft.statedTotalGrams!)} g`}
+                actionLabel={plateMismatch ? 'Split plate weight across items' : undefined}
+                onAction={plateMismatch ? applyPlateSplit : undefined}>
+                {plateMismatch
+                  ? `Item weights below are estimates and add up to ${round1(plateSum)} g. Type the weights you know, or split the plate weight in proportion to the estimates (still an estimate).`
+                  : 'Item weights add up to the plate weight. Each share is still an estimate unless you weighed it.'}
               </Notice>
             ) : null}
             {draft.notes ? (
@@ -180,7 +192,15 @@ export default function ReviewScreen() {
               </ThemedText>
             ) : null}
             {draft.items.map((item) => (
-              <ItemRow key={item.id} item={item} onGramsChange={onGrams} onRemove={onRemove} />
+              <ItemRow
+                key={item.id}
+                item={item}
+                hint={draft.portionHints?.[item.id]}
+                onGramsChange={onGrams}
+                onScale={onScale}
+                onUseEstimate={onUseEstimate}
+                onRemove={onRemove}
+              />
             ))}
             <Button label="Add item" variant="secondary" onPress={addItem} />
           </ScrollView>

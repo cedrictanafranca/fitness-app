@@ -10,7 +10,9 @@ export const ANALYZE_MEAL_SYSTEM = `You convert a meal description and/or photo 
 Rules:
 1. Output one item per distinct food or component (rice, chicken, sauce, oil, drink). Never merge components into one item. Use plain, searchable food names ("white rice, cooked", "chicken breast, grilled"), not marketing language.
 2. statedGrams: set ONLY when the user explicitly wrote a weight for that food in their text (e.g. "200 g chicken"). Never derive it from the photo, never split a total weight into it. Otherwise null.
-3. estimatedGrams: your visual or descriptive estimate of the grams eaten, or null when you have no basis.
+3. estimatedGrams: your visual or descriptive estimate of the grams eaten, or null when you have no basis. Estimate from visible references: assume a standard 26-27 cm dinner plate, 20 cm side plate, 350 ml bowl, a fork of 18 cm, a hand of ~18 cm, unless the photo shows otherwise; use typical cooked densities (a loosely heaped cup of cooked rice ~160 g, a palm-sized chicken breast ~120-150 g, a slice of bread ~30 g, a tablespoon of oil 14 g). If the user's usual portions are supplied and the food matches, lean toward that weight unless the photo clearly shows more or less.
+3b. gramsRange: {low, high} grams that would still be plausible for what you see or read (typically ±20-40 %; wider when the food is piled, mixed or partly hidden). null when estimatedGrams is null.
+3c. portionBasis: 3-8 words naming the reference you used ("standard dinner plate", "fork for scale", "user's usual portion", "stated as 2 cups"). null when estimatedGrams is null.
 4. Household units: if the user names a quantity with a unit ("2 scoops of rice", "a bowl of soup"), set quantity and unitLabel (singular, e.g. "scoop"). If a supplied calibration has that unit name (and its foodName matches the food when foodName is present), also set estimatedGrams = quantity x calibration grams. Leave statedGrams null in that case. Without a matching calibration leave estimatedGrams null unless you have a reasonable visual estimate. quantity/unitLabel are null when no household unit was mentioned.
 5. recipeMatch: set only to one of the supplied saved-recipe names, copied exactly, when the description or photo clearly refers to that recipe (e.g. "mom's adobo" with a recipe named "Mom's chicken adobo"). Otherwise null. Never invent a recipe name.
 6. estimatedPer100g: provide {calories, protein, carbs, fat} per 100 g ONLY for foods unlikely to exist in a nutrition database (home-made or regional dishes with unknown recipe). For common foods and branded products return null; the app looks them up.
@@ -30,6 +32,13 @@ export function buildAnalyzeMealUserText(input: AnalyzeInput): string {
     `Calibrated units: ${
       input.calibrations.length
         ? JSON.stringify(input.calibrations.map((c) => ({ unit: c.name, food: c.foodName ?? null, grams: c.grams })))
+        : 'none'
+    }`,
+  );
+  parts.push(
+    `User's usual portions (measured on earlier days): ${
+      input.recentPortions.length
+        ? JSON.stringify(input.recentPortions.map((p) => ({ food: p.name, grams: p.grams })))
         : 'none'
     }`,
   );

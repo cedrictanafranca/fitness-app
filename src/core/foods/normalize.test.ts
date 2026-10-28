@@ -169,6 +169,7 @@ describe('sanitizeAnalyzedMeal', () => {
     recipeNames: ["Mom's chicken adobo"],
     calibrations: [{ name: 'scoop', foodName: 'rice', grams: 145 }],
     localHour: 13,
+    recentPortions: [],
   };
   const item = {
     name: 'white rice, cooked',
@@ -179,6 +180,8 @@ describe('sanitizeAnalyzedMeal', () => {
     recipeMatch: null,
     confidence: 1.4,
     estimatedPer100g: null,
+    gramsRange: null,
+    portionBasis: null,
   };
 
   it('fills estimatedGrams from a matching calibration and clamps confidence', () => {
@@ -202,6 +205,24 @@ describe('sanitizeAnalyzedMeal', () => {
     );
     expect(out.items[0]?.statedGrams).toBeNull();
     expect(out.items[0]?.recipeMatch).toBeNull();
+  });
+
+  it('keeps a plausible range only around a real estimate and orders it', () => {
+    const out = sanitizeAnalyzedMeal(
+      {
+        items: [
+          { ...item, estimatedGrams: 200, gramsRange: { low: 260, high: 150 }, portionBasis: '  standard dinner plate ' },
+          { ...item, quantity: null, unitLabel: null, gramsRange: { low: 100, high: 200 }, portionBasis: 'plate' },
+        ],
+        mealType: null,
+        clarification: null,
+        notes: null,
+      },
+      { ...base, text: 'rice' },
+    );
+    expect(out.items[0]).toMatchObject({ gramsRange: { low: 150, high: 260 }, portionBasis: 'standard dinner plate' });
+    // No estimate → no range or basis, whatever the model said.
+    expect(out.items[1]).toMatchObject({ estimatedGrams: null, gramsRange: null, portionBasis: null });
   });
 
   it('keeps an exact recipe match', () => {

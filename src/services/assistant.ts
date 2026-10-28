@@ -163,6 +163,8 @@ export async function prepareAction(action: AssistantAction, key: string, now = 
           recipeMatch: i.recipeMatch,
           confidence: 0.8,
           estimatedPer100g: i.estimatedPer100g,
+          gramsRange: null,
+          portionBasis: null,
         })),
         mealType: action.mealType,
         clarification: null,

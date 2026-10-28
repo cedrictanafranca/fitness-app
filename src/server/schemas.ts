@@ -43,7 +43,14 @@ export const analyzeMealRequestSchema = z.object({
     .max(200)
     .default([]),
   localHour: z.number().int().min(0).max(23),
+  /** The user's usual measured weights for foods they log often, so estimates anchor on their habits. */
+  recentPortions: z
+    .array(z.object({ name: z.string().max(200), grams: z.number().positive().max(20000) }))
+    .max(60)
+    .default([]),
 });
+
+export const portionRangeSchema = z.object({ low: z.number(), high: z.number() });
 
 export const analyzedMealItemSchema = z.object({
   name: z.string(),
@@ -54,6 +61,8 @@ export const analyzedMealItemSchema = z.object({
   recipeMatch: z.string().nullable(),
   confidence: z.number(),
   estimatedPer100g: macrosSchema.nullable(),
+  gramsRange: portionRangeSchema.nullable(),
+  portionBasis: z.string().nullable(),
 });
 
 export const analyzedMealSchema = z.object({
