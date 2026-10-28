@@ -9,6 +9,12 @@ export interface LiveQuery<T> {
   refresh: () => void;
 }
 
+interface State<T> {
+  data: T | undefined;
+  loading: boolean;
+  error: Error | null;
+}
+
 /**
  * Run an async read and re-run it whenever one of `tables` changes.
  * `query` should be stable or depend only on `deps`.
@@ -18,41 +24,37 @@ export function useLiveQuery<T>(
   tables: Table[],
   deps: unknown[] = []
 ): LiveQuery<T> {
-  const [data, setData] = useState<T>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [state, setState] = useState<State<T>>({ data: undefined, loading: true, error: null });
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    query()
-      .then((result) => {
-        if (cancelled) return;
-        setData(result);
-        setError(null);
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setError(e instanceof Error ? e : new Error(String(e)));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const run = async () => {
+      setState((s) => (s.loading ? s : { ...s, loading: true }));
+      try {
+        const data = await query();
+        if (!cancelled) setState({ data, loading: false, error: null });
+      } catch (e) {
+        if (!cancelled) {
+          setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e : new Error(String(e)) }));
+        }
+      }
+    };
+    void run();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, ...deps]);
 
+  const tableKey = tables.join(',');
   useEffect(() => {
     return subscribe((table) => {
-      if (tables.includes(table)) refresh();
+      if (tableKey.split(',').includes(table)) refresh();
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refresh, tables.join(',')]);
+  }, [refresh, tableKey]);
 
-  return { data, loading, error, refresh };
+  return { ...state, refresh };
 }
