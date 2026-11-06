@@ -1,13 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Spacing } from '@/constants/theme';
 import { averageOverDays } from '@/core/nutrition/engine';
 import type { DailyTotals } from '@/core/types';
 import { useTheme } from '@/hooks/use-theme';
 
-import { weekdayInitial } from '../dates';
+import { parseDateKey } from '../dates';
 import { Card } from './card';
 import { ProteinBars, type DayBar } from './protein-bars';
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function WeekCard({ week, proteinTarget }: { week: DailyTotals[]; proteinTarget: number }) {
   const theme = useTheme();
@@ -20,17 +23,17 @@ export function WeekCard({ week, proteinTarget }: { week: DailyTotals[]; protein
 
   const bars: DayBar[] = week.map((t) => ({
     key: t.date,
-    label: weekdayInitial(t.date),
+    label: WEEKDAY_SHORT[parseDateKey(t.date).getDay()],
     value: t.consumed.protein,
     isToday: t.date === today,
   }));
 
   return (
-    <Card title="This week" caption="Last 7 days">
+    <Card title="This Week">
       <View style={styles.statRow}>
-        <Stat label="Avg calories" value={loggedDays > 0 ? `${formatInt(avgCalories)} kcal` : '—'} color={theme.calories} />
-        <Stat label="Avg protein" value={loggedDays > 0 ? `${Math.round(avgProtein)} g` : '—'} color={theme.protein} />
-        <Stat label="Days logged" value={`${loggedDays} of ${week.length}`} color={theme.text} />
+        <Stat label="Avg calories" value={loggedDays > 0 ? formatInt(avgCalories) : '—'} unit="cal" color={theme.text} />
+        <Stat label="Avg protein" value={loggedDays > 0 ? String(Math.round(avgProtein)) : '—'} unit="g" color={theme.text} />
+        <Stat label="Days logged" value={String(loggedDays)} unit={`of ${week.length}`} color={theme.text} />
       </View>
 
       {loggedDays === 0 ? (
@@ -44,13 +47,16 @@ export function WeekCard({ week, proteinTarget }: { week: DailyTotals[]; protein
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+function Stat({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
   return (
     <View style={styles.stat}>
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statValue, { color }]}>
+        {value}
+        <Text style={styles.statUnit}> {unit}</Text>
+      </Text>
     </View>
   );
 }
@@ -60,16 +66,8 @@ function formatInt(n: number): string {
 }
 
 const styles = StyleSheet.create({
-  statRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  stat: {
-    flex: 1,
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  statRow: { flexDirection: 'row', gap: Spacing.three },
+  stat: { flex: 1, gap: 2 },
+  statValue: { fontSize: 20, fontWeight: 700 },
+  statUnit: { fontSize: 12, fontWeight: 500, color: '#8E8E93' },
 });

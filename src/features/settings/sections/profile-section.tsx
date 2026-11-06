@@ -46,7 +46,7 @@ export function ProfileSection({
       ) : (
         <View style={styles.pair}>
           <FieldInput
-            label="Height, feet"
+            label="Feet"
             suffix="ft"
             flex={1}
             value={draft.heightFt}

@@ -2,42 +2,41 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Card as BaseCard } from '@/components/ui/card';
+import { Spacing } from '@/constants/theme';
 
-/** Rounded surface with a title and optional caption, used for each Progress section. */
+/** Elevated white card with a bold title row and an optional right-side element or caption. */
 export function Card({
   title,
   caption,
+  trailing,
   children,
 }: {
   title: string;
   caption?: string;
+  trailing?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <BaseCard padding={Spacing.three + Spacing.one} style={styles.card}>
       <View style={styles.header}>
-        <ThemedText type="smallBold">{title}</ThemedText>
-        {caption ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            {caption}
-          </ThemedText>
-        ) : null}
+        <ThemedText style={styles.title} accessibilityRole="header">
+          {title}
+        </ThemedText>
+        {trailing ??
+          (caption ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {caption}
+            </ThemedText>
+          ) : null)}
       </View>
       {children}
-    </ThemedView>
+    </BaseCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 20,
-    padding: 16,
-    gap: 14,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  card: { gap: Spacing.three },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  title: { fontSize: 19, lineHeight: 24, fontWeight: 600 },
 });

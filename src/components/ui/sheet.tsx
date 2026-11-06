@@ -3,7 +3,7 @@ import { Animated, Modal, Pressable, StyleSheet, useWindowDimensions, View } fro
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export interface SheetProps {
@@ -47,13 +47,15 @@ export function Sheet({ visible, onClose, title, children }: SheetProps) {
             styles.sheet,
             { backgroundColor: theme.background, paddingBottom: insets.bottom + Spacing.three, transform: [{ translateY }] },
           ]}>
-          <View style={[styles.grabber, { backgroundColor: theme.track }]} />
-          {title != null && (
-            <ThemedText type="default" style={styles.title} accessibilityRole="header">
-              {title}
-            </ThemedText>
-          )}
-          {children}
+          <View style={styles.inner}>
+            <View style={[styles.grabber, { backgroundColor: theme.track }]} />
+            {title != null && (
+              <ThemedText type="default" style={styles.title} accessibilityRole="header">
+                {title}
+              </ThemedText>
+            )}
+            {children}
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -66,10 +68,12 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
     maxHeight: '90%',
+    alignItems: 'center',
   },
+  inner: { width: '100%', maxWidth: MaxContentWidth },
   grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, marginBottom: Spacing.three },
   title: { fontSize: 20, lineHeight: 26, fontWeight: 700, marginBottom: Spacing.three },
 });

@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { HeaderIconButton } from '@/components/ui/header';
+import { Icon as LineIcon } from '@/components/ui/icons';
+import { Elevation, Radius, Spacing } from '@/constants/theme';
 import type { Food, MealItem } from '@/core/types';
 import { foodsRepo, mealsRepo, recipesRepo } from '@/data/repos';
 import { QuantitySheet } from '@/features/log/components/QuantitySheet';
-import { Button, Chip, Icon, Notice, TextField } from '@/features/log/components/ui';
+import { Button, Notice, TextField } from '@/features/log/components/ui';
 import { createdFoodStore } from '@/features/log/created-food-store';
 import { addDraftItem, getDraft } from '@/features/log/draft-store';
 import { SOURCE_LABELS, errorMessage, macroLine } from '@/features/log/format';
@@ -139,7 +141,7 @@ export default function SearchScreen() {
   const visible = filter === 'all' ? sections : sections.filter((s) => allowed.includes(s.title));
 
   const emptyTitle =
-    filter === 'foods' ? 'My foods' : filter === 'recipes' ? 'Recipes' : filter === 'recent' ? 'Recent' : query.trim() ? 'No matches' : 'Nothing yet';
+    filter === 'foods' ? 'My Foods' : filter === 'recipes' ? 'Recipes' : filter === 'recent' ? 'Recent' : query.trim() ? 'No matches' : 'Nothing yet';
   const emptyText =
     filter === 'foods'
       ? 'Add a custom food to your personal list.'
@@ -155,34 +157,41 @@ export default function SearchScreen() {
     <ThemedView style={styles.flex}>
       <Stack.Screen
         options={{
-          title: 'Add food',
+          title: 'Log Food',
           ...(fromReview
             ? {}
-            : {
-                headerLeft: () => (
-                  <Pressable accessibilityRole="button" onPress={cancelLogFlow} hitSlop={8}>
-                    <ThemedText type="default">Close</ThemedText>
-                  </Pressable>
-                ),
-              }),
+            : { headerLeft: () => <HeaderIconButton icon="back" accessibilityLabel="Close" onPress={cancelLogFlow} /> }),
         }}
       />
+      <View style={[styles.tabs, { borderBottomColor: theme.border }]} accessibilityRole="tablist">
+        {FILTERS.map((f) => {
+          const selected = filter === f.value;
+          return (
+            <Pressable
+              key={f.value}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setFilter(f.value)}
+              style={[styles.tab, selected && { borderBottomColor: theme.text }]}>
+              <ThemedText style={[styles.tabLabel, { color: selected ? theme.text : theme.textSecondary }, selected && styles.tabSelected]}>
+                {f.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
       <View style={styles.header}>
         <TextField
           value={query}
           onChangeText={setQuery}
-          placeholder="Search foods and recipes"
+          placeholder="Describe what you ate"
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
           clearButtonMode="while-editing"
           accessibilityLabel="Search foods"
+          leading={<LineIcon name="search" size={18} color={theme.textSecondary} />}
         />
-        <View style={styles.filters}>
-          {FILTERS.map((f) => (
-            <Chip key={f.value} label={f.label} selected={filter === f.value} onPress={() => setFilter(f.value)} />
-          ))}
-        </View>
         {remoteError ? <Notice tone="warn">{remoteError}</Notice> : null}
         {error ? <Notice tone="bad">{error}</Notice> : null}
       </View>
@@ -194,8 +203,8 @@ export default function SearchScreen() {
         contentContainerStyle={styles.list}
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            {section.title}
+          <ThemedText style={styles.sectionTitle} accessibilityRole="header">
+            {section.title === 'Recent' && !query.trim() ? 'Suggestions' : section.title}
           </ThemedText>
         )}
         renderItem={({ item }) => (
@@ -207,14 +216,24 @@ export default function SearchScreen() {
               { backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement },
             ]}>
             <View style={styles.rowText}>
-              <ThemedText type="default" numberOfLines={1}>
+              <ThemedText style={styles.rowTitle} numberOfLines={1}>
                 {item.name}
               </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                {[item.brand, SOURCE_LABELS[item.source]].filter(Boolean).join(' · ')} · per 100 g {macroLine(item.per100g)}
+              <View style={styles.rowMeta}>
+                <LineIcon name="flame" size={13} filled color={theme.textSecondary} />
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.rowMetaText}>
+                  {`${Math.round(item.per100g.calories)} cal · 100 g`}
+                  {item.brand ? ` · ${item.brand}` : ''}
+                  {` · ${SOURCE_LABELS[item.source]}`}
+                </ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.rowMacros}>
+                {macroLine(item.per100g)}
               </ThemedText>
             </View>
-            <Icon name="plus.circle.fill" fallback="+" size={26} color={theme.text} />
+            <View style={[styles.plus, { backgroundColor: theme.surface }, Elevation.card]}>
+              <LineIcon name="plus" size={18} strokeWidth={2.2} color={theme.text} />
+            </View>
           </Pressable>
         )}
         ListEmptyComponent={
@@ -222,10 +241,11 @@ export default function SearchScreen() {
             <ActivityIndicator style={styles.spinner} />
           ) : (
             <View style={styles.empty}>
-              <ThemedText type="default" style={styles.emptyTitle}>
-                {emptyTitle}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+              <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundElement }]}>
+                <LineIcon name={filter === 'recipes' ? 'book' : filter === 'recent' ? 'timer' : 'bowl'} size={34} color={theme.text} />
+              </View>
+              <ThemedText style={styles.emptyTitle}>{emptyTitle}</ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.emptyText}>
                 {emptyText}
               </ThemedText>
               {filter === 'foods' || (filter === 'all' && !query.trim() && sections.length === 0) ? (
@@ -237,51 +257,63 @@ export default function SearchScreen() {
         ListFooterComponent={loading && sections.length > 0 ? <ActivityIndicator style={styles.spinner} /> : undefined}
       />
 
-      <View
-        style={[
-          styles.bottom,
-          { backgroundColor: theme.background, borderTopColor: theme.backgroundSelected, paddingBottom: Math.max(insets.bottom, Spacing.three) },
-        ]}>
+      <View style={[styles.bottom, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
         <View style={styles.bottomRow}>
-          <Button label="Manual add" variant="secondary" onPress={() => goAddFood()} style={styles.bottomButton} />
+          <Button
+            label="Manual Add"
+            variant="secondary"
+            onPress={() => goAddFood()}
+            style={styles.bottomButton}
+            leading={<LineIcon name="pencil" size={18} color={theme.text} />}
+          />
           {!fromReview ? (
-            <Button label="Describe it" variant="secondary" onPress={cancelLogFlow} style={styles.bottomButton} />
+            <Button
+              label="Describe it"
+              variant="secondary"
+              onPress={cancelLogFlow}
+              style={styles.bottomButton}
+              leading={<LineIcon name="mic" size={18} color={theme.text} />}
+            />
           ) : null}
         </View>
       </View>
 
-      <QuantitySheet
-        target={target}
-        mealId={getDraft().mealId}
-        onClose={() => setTarget(null)}
-        onConfirm={onConfirm}
-      />
+      <QuantitySheet target={target} mealId={getDraft().mealId} onClose={() => setTarget(null)} onConfirm={onConfirm} />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two },
-  filters: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' },
-  list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three, gap: Spacing.two },
-  sectionTitle: { marginTop: Spacing.three, marginBottom: Spacing.one },
+  tabs: { flexDirection: 'row', paddingHorizontal: Spacing.three, borderBottomWidth: StyleSheet.hairlineWidth },
+  tab: { paddingVertical: Spacing.two + Spacing.one, marginRight: Spacing.four, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabLabel: { fontSize: 16, lineHeight: 20, fontWeight: 500 },
+  tabSelected: { fontWeight: 700 },
+  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three, gap: Spacing.two },
+  list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three },
+  sectionTitle: { fontSize: 18, lineHeight: 24, fontWeight: 700, marginTop: Spacing.three, marginBottom: Spacing.two },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    borderRadius: 14,
+    borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three,
     marginBottom: Spacing.two,
   },
   rowText: { flex: 1, gap: 2 },
+  rowTitle: { fontSize: 15, lineHeight: 20, fontWeight: 600 },
+  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rowMetaText: { flex: 1, fontSize: 13 },
+  rowMacros: { fontSize: 12 },
+  plus: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   spinner: { marginVertical: Spacing.four },
-  empty: { alignItems: 'center', gap: Spacing.one, marginTop: Spacing.six, paddingHorizontal: Spacing.four },
-  emptyTitle: { fontWeight: 700, fontSize: 18 },
+  empty: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.six + Spacing.four, paddingHorizontal: Spacing.four },
+  emptyIcon: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.one },
+  emptyTitle: { fontWeight: 700, fontSize: 22, lineHeight: 28 },
   emptyText: { textAlign: 'center' },
-  emptyButton: { marginTop: Spacing.two },
-  bottom: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth },
+  emptyButton: { marginTop: Spacing.two, alignSelf: 'stretch' },
+  bottom: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
   bottomRow: { flexDirection: 'row', gap: Spacing.two },
-  bottomButton: { flex: 1 },
+  bottomButton: { flex: 1, paddingHorizontal: Spacing.two },
 });

@@ -1,10 +1,13 @@
 export { Button, type ButtonProps, type ButtonVariant } from './button';
-export { Card, type CardProps } from './card';
+export { Card, type CardProps, type CardVariant } from './card';
 export { EmptyState, type EmptyStateProps } from './empty-state';
 export { EstimateBadge, type EstimateBadgeProps } from './estimate-badge';
+export { HeaderBackButton, HeaderIconButton, goBackOrHome, screenHeaderOptions, type StackScreenOptions } from './header';
+export { Icon, type IconName, type IconProps } from './icons';
 export { ListRow, type ListRowProps } from './list-row';
 export { MacroCard, type MacroCardProps } from './macro-card';
 export { MacroPill, type MacroPillProps } from './macro-pill';
 export { Ring, type RingProps } from './ring';
 export { SectionHeader, type SectionHeaderProps } from './section-header';
+export { Segmented, type SegmentedProps } from './segmented';
 export { Sheet, type SheetProps } from './sheet';

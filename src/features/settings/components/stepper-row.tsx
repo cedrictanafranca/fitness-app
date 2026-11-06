@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Icon } from '@/components/ui/icons';
 import { useTheme } from '@/hooks/use-theme';
 
 export function StepperRow({
@@ -30,16 +31,16 @@ export function StepperRow({
       <ThemedText type="default" style={disabled ? styles.dimmed : undefined}>
         {label}
       </ThemedText>
-      <View style={styles.stepper}>
+      <View style={[styles.stepper, { borderColor: theme.border }]}>
         <StepButton
-          label="−"
+          glyph="minus"
           accessibilityLabel={`Decrease ${label}`}
           disabled={!canDecrease}
           onPress={() => onChange(Math.max(min, value - step))}
         />
         <Text style={[styles.value, { color: theme.text }, disabled && styles.dimmed]}>{format(value)}</Text>
         <StepButton
-          label="+"
+          glyph="plus"
           accessibilityLabel={`Increase ${label}`}
           disabled={!canIncrease}
           onPress={() => onChange(Math.min(max, value + step))}
@@ -50,12 +51,12 @@ export function StepperRow({
 }
 
 function StepButton({
-  label,
+  glyph,
   accessibilityLabel,
   disabled,
   onPress,
 }: {
-  label: string;
+  glyph: 'plus' | 'minus';
   accessibilityLabel: string;
   disabled: boolean;
   onPress: () => void;
@@ -68,43 +69,21 @@ function StepButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.stepButton, { backgroundColor: theme.backgroundSelected, opacity: disabled ? 0.35 : 1 }]}>
-      <Text style={[styles.stepLabel, { color: theme.text }]}>{label}</Text>
+      style={[styles.stepButton, { opacity: disabled ? 0.3 : 1 }]}>
+      {glyph === 'plus' ? (
+        <Icon name="plus" size={16} strokeWidth={2.2} color={theme.text} />
+      ) : (
+        <View style={[styles.minus, { backgroundColor: theme.text }]} />
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  stepButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepLabel: {
-    fontSize: 20,
-    fontWeight: '600',
-    lineHeight: 24,
-  },
-  value: {
-    minWidth: 48,
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dimmed: {
-    opacity: 0.4,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 999, paddingHorizontal: 4 },
+  stepButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  minus: { width: 12, height: 2, borderRadius: 1 },
+  value: { minWidth: 44, textAlign: 'center', fontSize: 15, fontWeight: 600 },
+  dimmed: { opacity: 0.4 },
 });

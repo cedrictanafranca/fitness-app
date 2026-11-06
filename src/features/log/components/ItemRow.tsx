@@ -51,7 +51,7 @@ function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemo
     <Card style={styles.card}>
       <View style={styles.top}>
         <View style={styles.titleCol}>
-          <ThemedText type="default" numberOfLines={2}>
+          <ThemedText style={styles.name} numberOfLines={2}>
             {item.name}
           </ThemedText>
           <View style={styles.badges}>
@@ -62,19 +62,20 @@ function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemo
             />
           </View>
         </View>
-        <View style={styles.gramsCol}>
-          <TextField
-            value={text}
-            onChangeText={change}
-            keyboardType="decimal-pad"
-            placeholder="grams"
-            accessibilityLabel={`Grams of ${item.name}`}
-            style={[styles.grams, missing ? { borderWidth: 1, borderColor: '#D14343' } : null]}
-          />
-          <ThemedText type="small" themeColor="textSecondary">
-            g
-          </ThemedText>
-        </View>
+        <TextField
+          value={text}
+          onChangeText={change}
+          keyboardType="decimal-pad"
+          placeholder="0"
+          accessibilityLabel={`Grams of ${item.name}`}
+          style={styles.grams}
+          containerStyle={[styles.gramsBox, missing ? { borderColor: theme.warning } : null]}
+          trailing={
+            <ThemedText type="small" themeColor="textSecondary">
+              g
+            </ThemedText>
+          }
+        />
       </View>
 
       {item.quantity != null && item.unitLabel ? (
@@ -84,7 +85,7 @@ function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemo
       ) : null}
 
       {missing ? (
-        <ThemedText type="small" style={{ color: '#D14343' }}>
+        <ThemedText type="small" style={{ color: theme.warning }}>
           Enter the weight to include this item.
         </ThemedText>
       ) : (
@@ -120,7 +121,7 @@ function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemo
         </View>
       ) : null}
       {noNutrition ? (
-        <ThemedText type="small" style={{ color: '#C27A12' }}>
+        <ThemedText type="small" style={{ color: '#D9A441' }}>
           No nutrition data found for this item. Remove it and add it from search.
         </ThemedText>
       ) : null}
@@ -131,7 +132,7 @@ function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemo
         onPress={() => onRemove(item.id)}
         hitSlop={8}
         style={styles.remove}>
-        <ThemedText type="smallBold" style={{ color: theme.textSecondary }}>
+        <ThemedText type="smallBold" style={{ color: theme.warning }}>
           Remove
         </ThemedText>
       </Pressable>
@@ -145,9 +146,10 @@ const styles = StyleSheet.create({
   card: { gap: Spacing.one },
   top: { flexDirection: 'row', gap: Spacing.three, alignItems: 'flex-start' },
   titleCol: { flex: 1, gap: Spacing.one },
+  name: { fontSize: 15, lineHeight: 20, fontWeight: 600 },
   badges: { flexDirection: 'row', gap: Spacing.one, flexWrap: 'wrap' },
-  gramsCol: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one, paddingTop: Spacing.one },
-  grams: { width: 84, textAlign: 'right', minHeight: 44 },
+  gramsBox: { width: 110, minHeight: 48 },
+  grams: { textAlign: 'right', minHeight: 40 },
   remove: { alignSelf: 'flex-end', paddingTop: Spacing.one },
 });

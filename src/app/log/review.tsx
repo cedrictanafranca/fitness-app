@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { HeaderIconButton } from '@/components/ui/header';
+import { Icon, type IconName } from '@/components/ui/icons';
 import { Radius, Spacing } from '@/constants/theme';
 import { toDateKey } from '@/core/nutrition/engine';
 import { mealsRepo } from '@/data/repos';
@@ -14,7 +16,7 @@ import { resetComposer, useComposer } from '@/features/log/composer-store';
 import { ItemRow } from '@/features/log/components/ItemRow';
 import { MealTypeChips } from '@/features/log/components/MealTypeChips';
 import { Sheet, SheetRow } from '@/features/log/components/Sheet';
-import { Button, Icon, Notice, SectionLabel, TextField } from '@/features/log/components/ui';
+import { Button, Notice, TextField } from '@/features/log/components/ui';
 import {
   applyPlateSplit,
   defaultMealName,
@@ -30,7 +32,7 @@ import {
   useDraft,
 } from '@/features/log/draft-store';
 import { errorMessage, round1 } from '@/features/log/format';
-import { cancelLogFlow, finishLogFlow, goCapture, goSearch } from '@/features/log/nav';
+import { finishLogFlow, goCapture, goSearch } from '@/features/log/nav';
 import { useTheme } from '@/hooks/use-theme';
 import { persistPhoto, pickFromLibrary, resolvePhotoUri } from '@/services/camera';
 
@@ -146,13 +148,9 @@ export default function ReviewScreen() {
     <ThemedView style={styles.flex}>
       <Stack.Screen
         options={{
-          title: editing ? 'Edit meal' : 'Review meal',
-          headerLeft: () => (
-            <Pressable accessibilityRole="button" onPress={cancelLogFlow} hitSlop={8}>
-              <ThemedText type="default" style={{ color: theme.text }}>
-                Cancel
-              </ThemedText>
-            </Pressable>
+          title: editing ? 'Edit Meal' : 'Create Meal',
+          headerRight: () => (
+            <HeaderIconButton icon={photo ? 'image' : 'more'} accessibilityLabel="Meal photo" onPress={() => setPhotoSheet(true)} />
           ),
         }}
       />
@@ -176,11 +174,10 @@ export default function ReviewScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Add meal photo"
                 onPress={() => setPhotoSheet(true)}
-                style={[styles.addPhoto, { borderColor: theme.backgroundSelected }]}>
-                <Icon name="photo" fallback="▣" size={18} color={theme.textSecondary} />
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  Add meal photo
-                </ThemedText>
+                style={({ pressed }) => [styles.addPhoto, { borderColor: theme.border, backgroundColor: theme.surface }, pressed && styles.pressed]}>
+                <Icon name="image" size={20} color={theme.text} />
+                <ThemedText style={styles.addPhotoLabel}>Add Meal Photo</ThemedText>
+                <Icon name="chevron-down" size={16} color={theme.text} />
               </Pressable>
             )}
             {photoError ? <Notice tone="warn">{photoError}</Notice> : null}
@@ -188,27 +185,29 @@ export default function ReviewScreen() {
             <TextField
               value={draft.name}
               onChangeText={(name) => updateDraft({ name })}
-              placeholder={draft.items.length ? placeholderName : 'Tap to name'}
+              placeholder={draft.items.length ? placeholderName : 'Tap to Name'}
               accessibilityLabel="Meal name"
               style={styles.name}
+              containerStyle={styles.nameBox}
               returnKeyType="done"
+              trailing={<Icon name="pencil" size={18} color={theme.text} />}
             />
 
-            <View style={[styles.totalsCard, { backgroundColor: theme.backgroundElement }]}>
-              <View style={styles.caloriesRow}>
-                <Icon name="flame.fill" fallback="◉" size={22} color={theme.calories} />
-                <View>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Calories
-                  </ThemedText>
-                  <ThemedText style={styles.caloriesValue}>{Math.round(totals.calories)}</ThemedText>
-                </View>
+            <View style={[styles.totalsCard, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+              <View style={[styles.flameBox, { backgroundColor: theme.backgroundElement }]}>
+                <Icon name="flame" size={26} filled color={theme.text} />
               </View>
-              <View style={styles.macroRow}>
-                <MacroTile label="Protein" value={totals.protein} color={theme.protein} />
-                <MacroTile label="Carbs" value={totals.carbs} color={theme.carbs} />
-                <MacroTile label="Fat" value={totals.fat} color={theme.fat} />
+              <View>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Calories
+                </ThemedText>
+                <ThemedText style={styles.caloriesValue}>{Math.round(totals.calories)}</ThemedText>
               </View>
+            </View>
+            <View style={styles.macroRow}>
+              <MacroTile label="Protein" icon="drumstick" value={totals.protein} color={theme.protein} />
+              <MacroTile label="Carbs" icon="wheat" value={totals.carbs} color={theme.carbs} />
+              <MacroTile label="Fats" icon="drop" value={totals.fat} color={theme.fat} />
             </View>
 
             <MealTypeChips value={draft.mealType} onChange={(mealType) => updateDraft({ mealType })} />
@@ -235,7 +234,12 @@ export default function ReviewScreen() {
               </ThemedText>
             ) : null}
 
-            <SectionLabel>Meal items</SectionLabel>
+            <View style={styles.itemsHeader}>
+              <Icon name="bowl" size={26} color={theme.text} />
+              <ThemedText style={styles.itemsTitle} accessibilityRole="header">
+                Meal Items
+              </ThemedText>
+            </View>
             {draft.items.map((item) => (
               <ItemRow
                 key={item.id}
@@ -251,42 +255,36 @@ export default function ReviewScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add items to this meal"
               onPress={addItem}
-              style={({ pressed }) => [styles.addItems, { borderColor: theme.backgroundSelected }, pressed && { opacity: 0.6 }]}>
-              <ThemedText type="default" style={styles.addItemsPlus}>
-                +
-              </ThemedText>
-              <ThemedText type="smallBold">Add items to this meal</ThemedText>
+              style={({ pressed }) => [styles.addItems, { borderColor: theme.border, backgroundColor: theme.surface }, pressed && styles.pressed]}>
+              <Icon name="plus" size={18} strokeWidth={2.2} color={theme.text} />
+              <ThemedText style={styles.addItemsLabel}>Add items to this meal</ThemedText>
             </Pressable>
           </ScrollView>
 
-          <View
-            style={[
-              styles.footer,
-              { backgroundColor: theme.background, borderTopColor: theme.backgroundSelected, paddingBottom: Math.max(insets.bottom, Spacing.three) },
-            ]}>
+          <View style={[styles.footer, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
             {saveError ? <Notice tone="bad">{saveError}</Notice> : null}
             {missing.length > 0 ? (
-              <ThemedText type="small" style={{ color: '#D14343' }}>
+              <ThemedText type="small" style={{ color: theme.warning }}>
                 Enter a weight for {missing.length === 1 ? missing[0].name : `${missing.length} items`} to save.
               </ThemedText>
             ) : null}
-            <Button label={editing ? 'Save changes' : 'Create meal'} onPress={save} disabled={!canSave} loading={saving} />
+            <Button label={editing ? 'Save Changes' : 'Create Meal'} onPress={save} disabled={!canSave} loading={saving} />
           </View>
         </KeyboardAvoidingView>
       )}
 
-      <Sheet visible={photoSheet} onClose={() => setPhotoSheet(false)} title="Add meal photo">
+      <Sheet visible={photoSheet} onClose={() => setPhotoSheet(false)} title="Add Meal Photo">
         <SheetRow
-          title="Take photo"
+          title="Take Photo"
           onPress={() => {
             setPhotoSheet(false);
             goCapture();
           }}
         />
-        <SheetRow title="Choose from library" onPress={choosePhoto} />
+        <SheetRow title="Upload Photo" onPress={choosePhoto} />
         {draft.photoUri ? (
           <SheetRow
-            title="Remove photo"
+            title="Remove Photo"
             destructive
             onPress={() => {
               updateDraft({ photoUri: undefined });
@@ -299,15 +297,17 @@ export default function ReviewScreen() {
   );
 }
 
-function MacroTile({ label, value, color }: { label: string; value: number; color: string }) {
+function MacroTile({ label, icon, value, color }: { label: string; icon: IconName; value: number; color: string }) {
   const theme = useTheme();
   return (
-    <View style={[styles.macroTile, { backgroundColor: theme.background }]}>
-      <View style={[styles.macroDot, { backgroundColor: color }]} />
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold">{`${Math.round(value * 10) / 10}g`}</ThemedText>
+    <View style={[styles.macroTile, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+      <View style={styles.macroHead}>
+        <Icon name={icon} size={14} color={color} strokeWidth={2} />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.macroLabel}>
+          {label}
+        </ThemedText>
+      </View>
+      <ThemedText style={styles.macroValue}>{`${Math.round(value * 10) / 10}g`}</ThemedText>
     </View>
   );
 }
@@ -315,35 +315,47 @@ function MacroTile({ label, value, color }: { label: string; value: number; colo
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.three },
-  content: { padding: Spacing.three, gap: Spacing.two },
-  photo: { width: '100%', height: 180, borderRadius: 16 },
+  content: { padding: Spacing.three, gap: Spacing.two + Spacing.one },
+  photo: { width: '100%', height: 200, borderRadius: Radius.lg },
   addPhoto: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderRadius: Radius.md,
     paddingVertical: Spacing.three,
   },
-  name: { fontSize: 20, fontWeight: '600' },
-  totalsCard: { borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.two },
-  caloriesRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  caloriesValue: { fontSize: 32, lineHeight: 36, fontWeight: 700 },
+  addPhotoLabel: { fontSize: 17, fontWeight: 600 },
+  pressed: { opacity: 0.6 },
+  name: { fontSize: 22, fontWeight: 600 },
+  nameBox: { minHeight: 64 },
+  totalsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.three,
+  },
+  flameBox: { width: 52, height: 52, borderRadius: Radius.sm + 2, alignItems: 'center', justifyContent: 'center' },
+  caloriesValue: { fontSize: 32, lineHeight: 38, fontWeight: 700 },
   macroRow: { flexDirection: 'row', gap: Spacing.two },
-  macroTile: { flex: 1, borderRadius: Radius.md, padding: Spacing.two + Spacing.half, gap: Spacing.half },
-  macroDot: { width: 8, height: 8, borderRadius: 4 },
+  macroTile: { flex: 1, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, gap: Spacing.one },
+  macroHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  macroLabel: { fontSize: 12 },
+  macroValue: { fontSize: 18, lineHeight: 22, fontWeight: 700 },
+  itemsHeader: { alignItems: 'center', gap: Spacing.one, marginTop: Spacing.four },
+  itemsTitle: { fontSize: 24, lineHeight: 30, fontWeight: 700 },
   addItems: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
+    borderWidth: 1,
     borderRadius: Radius.pill,
     paddingVertical: Spacing.three,
   },
-  addItemsPlus: { fontWeight: 700 },
-  footer: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth },
+  addItemsLabel: { fontSize: 16, fontWeight: 500 },
+  footer: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two },
 });

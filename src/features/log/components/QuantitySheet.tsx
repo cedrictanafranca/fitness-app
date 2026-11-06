@@ -112,13 +112,15 @@ function QuantityBody({
               value={value}
               onChangeText={setValue}
               keyboardType="decimal-pad"
-              style={styles.input}
+              containerStyle={styles.input}
               accessibilityLabel={mode === 'grams' ? 'Grams' : 'Quantity'}
               selectTextOnFocus
+              trailing={
+                <ThemedText type="default" themeColor="textSecondary">
+                  {mode === 'grams' ? 'g' : '× serving'}
+                </ThemedText>
+              }
             />
-            <ThemedText type="default" themeColor="textSecondary">
-              {mode === 'grams' ? 'g' : '× serving'}
-            </ThemedText>
           </View>
 
           {preview ? (

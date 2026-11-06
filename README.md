@@ -75,8 +75,10 @@ recipes with batches and portion calibration, settings, weight log. Phase 2's co
 assistant (✦ on Home, or "Ask the assistant" on Log) answers questions about your log and proposes
 structured changes that the app applies through the repositories; without `ANTHROPIC_API_KEY` it
 runs an offline rule-based mode (see `docs/API.md`, `POST /api/ai/chat`). Screens follow the
-flows on the Figma reference board: a floating "+" on Home opens the logging shortcuts (scan,
-describe, food database, saved foods, log exercise, assistant), manual workouts credit the day's
-allowance via a MET estimate, and Progress shows a weight trend, weight changes and BMI. Apple Health / Apple Watch
+Figma reference board's design: white elevated cards on a white canvas, black pill actions, a
+floating pill tab bar (Home, Progress, Recipes, Profile) with a black "+" that opens the logging
+shortcuts (log exercise, saved foods, food database, scan, describe, assistant), manual workouts
+credit the day's allowance via a MET estimate, and Progress shows streak tiles, a weight trend,
+weight changes and BMI. Apple Health / Apple Watch
 integration is Phase 3 and not yet wired — activity credit settings exist but no activity data is
 imported. See `docs/PLAN.md` for the phase roadmap.

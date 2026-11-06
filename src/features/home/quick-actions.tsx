@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Sheet } from '@/components/ui';
-import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
-import { Icon } from '@/features/log/components/ui';
+import { Sheet } from '@/components/ui/sheet';
+import { Icon, type IconName } from '@/components/ui/icons';
+import { Elevation, Radius, Spacing } from '@/constants/theme';
 import { resetDraft } from '@/features/log/draft-store';
 import { goCapture, goSearch } from '@/features/log/nav';
 import { useTheme } from '@/hooks/use-theme';
@@ -15,39 +15,36 @@ const href = (h: string) => h as unknown as Href;
 interface QuickAction {
   key: string;
   label: string;
-  icon: Parameters<typeof Icon>[0]['name'];
-  fallback: string;
+  icon: IconName;
   run: () => void;
 }
 
 const ACTIONS: QuickAction[] = [
-  {
-    key: 'scan',
-    label: 'Scan food',
-    icon: 'camera.viewfinder',
-    fallback: '◎',
-    run: () => {
-      router.navigate(href('/log'));
-      goCapture();
-    },
-  },
-  { key: 'describe', label: 'Describe or dictate', icon: 'text.bubble', fallback: '✎', run: () => router.navigate(href('/log')) },
+  { key: 'exercise', label: 'Log exercise', icon: 'dumbbell', run: () => router.push(href('/exercise')) },
+  { key: 'saved', label: 'Saved foods', icon: 'bookmark', run: () => router.navigate(href('/recipes')) },
   {
     key: 'search',
-    label: 'Food database',
-    icon: 'magnifyingglass',
-    fallback: '⌕',
+    label: 'Food Database',
+    icon: 'search',
     run: () => {
       resetDraft();
       goSearch('start');
     },
   },
-  { key: 'saved', label: 'Saved foods & recipes', icon: 'bookmark', fallback: '☆', run: () => router.navigate(href('/recipes')) },
-  { key: 'exercise', label: 'Log exercise', icon: 'figure.run', fallback: '⚡', run: () => router.push(href('/exercise')) },
-  { key: 'assistant', label: 'Ask the assistant', icon: 'sparkles', fallback: '✦', run: () => router.push(href('/assistant')) },
+  {
+    key: 'scan',
+    label: 'Scan food',
+    icon: 'scan',
+    run: () => {
+      router.navigate(href('/log'));
+      goCapture();
+    },
+  },
+  { key: 'describe', label: 'Describe or dictate', icon: 'text', run: () => router.navigate(href('/log')) },
+  { key: 'assistant', label: 'Ask the assistant', icon: 'sparkles', run: () => router.push(href('/assistant')) },
 ];
 
-/** Floating "+" that opens the logging shortcuts (scan, describe, search, saved, exercise, assistant). */
+/** The black "+" button next to the tab bar; opens the grid of logging shortcuts. */
 export function QuickActions() {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
@@ -64,11 +61,11 @@ export function QuickActions() {
         accessibilityRole="button"
         accessibilityLabel="Log something"
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.fab, { backgroundColor: theme.primary }, pressed && styles.pressed]}>
-        <ThemedText style={[styles.plus, { color: theme.onPrimary }]}>+</ThemedText>
+        style={({ pressed }) => [styles.fab, { backgroundColor: theme.primary }, Elevation.float, pressed && styles.pressed]}>
+        <Icon name="plus" size={26} strokeWidth={2.2} color={theme.onPrimary} />
       </Pressable>
 
-      <Sheet visible={open} onClose={() => setOpen(false)} title="Log">
+      <Sheet visible={open} onClose={() => setOpen(false)}>
         <View style={styles.grid}>
           {ACTIONS.map((a) => (
             <Pressable
@@ -76,11 +73,9 @@ export function QuickActions() {
               accessibilityRole="button"
               accessibilityLabel={a.label}
               onPress={() => choose(a)}
-              style={({ pressed }) => [styles.tile, { backgroundColor: theme.backgroundElement }, pressed && styles.pressed]}>
-              <Icon name={a.icon} fallback={a.fallback} size={22} color={theme.text} />
-              <ThemedText type="smallBold" style={styles.tileLabel}>
-                {a.label}
-              </ThemedText>
+              style={({ pressed }) => [styles.tile, { backgroundColor: theme.surface }, Elevation.card, pressed && styles.pressed]}>
+              <Icon name={a.icon} size={26} strokeWidth={2} color={theme.text} />
+              <ThemedText style={styles.tileLabel}>{a.label}</ThemedText>
             </Pressable>
           ))}
         </View>
@@ -91,31 +86,23 @@ export function QuickActions() {
 
 const styles = StyleSheet.create({
   fab: {
-    position: 'absolute',
-    right: Spacing.three,
-    bottom: BottomTabInset + Spacing.three,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
   },
-  plus: { fontSize: 32, lineHeight: 36, fontWeight: 500 },
   pressed: { opacity: 0.7 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
   tile: {
-    width: '48%',
+    width: '46%',
     flexGrow: 1,
-    minHeight: 92,
+    minHeight: 112,
     borderRadius: Radius.lg,
     padding: Spacing.three,
-    gap: Spacing.two,
-    justifyContent: 'flex-end',
+    gap: Spacing.two + Spacing.half,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tileLabel: { fontSize: 15 },
+  tileLabel: { fontSize: 16, lineHeight: 20, fontWeight: 600, textAlign: 'center' },
 });

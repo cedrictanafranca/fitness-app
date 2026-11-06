@@ -4,6 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+/** Chat bubbles: black for the user, flat light grey for the assistant. */
 export function MessageBubble({ role, text }: { role: 'user' | 'assistant'; text: string }) {
   const theme = useTheme();
   const mine = role === 'user';
@@ -18,7 +19,7 @@ export function MessageBubble({ role, text }: { role: 'user' | 'assistant'; text
             ? { backgroundColor: theme.primary, borderBottomRightRadius: Radius.sm }
             : { backgroundColor: theme.backgroundElement, borderBottomLeftRadius: Radius.sm },
         ]}>
-        <ThemedText style={{ color: mine ? theme.onPrimary : theme.text }} selectable>
+        <ThemedText style={[styles.text, { color: mine ? theme.onPrimary : theme.text }]} selectable>
           {text}
         </ThemedText>
       </View>
@@ -30,5 +31,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   left: { justifyContent: 'flex-start', paddingRight: Spacing.five },
   right: { justifyContent: 'flex-end', paddingLeft: Spacing.five },
-  bubble: { maxWidth: '100%', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + Spacing.half, borderRadius: Radius.lg },
+  bubble: { maxWidth: '100%', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + Spacing.one, borderRadius: Radius.lg },
+  text: { fontSize: 16, lineHeight: 22 },
 });

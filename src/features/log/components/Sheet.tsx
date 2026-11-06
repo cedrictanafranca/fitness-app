@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleShee
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /** Bottom sheet built on Modal (works in light/dark, above other modals). */
@@ -29,15 +29,17 @@ export function Sheet({
             styles.sheet,
             { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, Spacing.three) },
           ]}>
-          <View style={[styles.grabber, { backgroundColor: theme.backgroundSelected }]} />
-          {title ? (
-            <ThemedText type="smallBold" style={styles.title}>
-              {title}
-            </ThemedText>
-          ) : null}
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            {children}
-          </ScrollView>
+          <View style={styles.inner}>
+            <View style={[styles.grabber, { backgroundColor: theme.track }]} />
+            {title ? (
+              <ThemedText style={styles.title} accessibilityRole="header">
+                {title}
+              </ThemedText>
+            ) : null}
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+              {children}
+            </ScrollView>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -61,7 +63,7 @@ export function SheetRow({
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.row, { backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement }]}>
-      <ThemedText type="default" style={destructive ? { color: '#D14343' } : undefined}>
+      <ThemedText type="default" style={destructive ? { color: theme.warning } : undefined}>
         {title}
       </ThemedText>
       {subtitle ? (
@@ -75,16 +77,18 @@ export function SheetRow({
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
     maxHeight: '85%',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
+    alignItems: 'center',
   },
-  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: Spacing.two },
-  title: { textAlign: 'center', marginBottom: Spacing.two },
+  inner: { width: '100%', maxWidth: MaxContentWidth },
+  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, marginBottom: Spacing.three },
+  title: { fontSize: 20, lineHeight: 26, fontWeight: 700, marginBottom: Spacing.three },
   content: { gap: Spacing.two, paddingBottom: Spacing.two },
-  row: { borderRadius: 14, paddingHorizontal: Spacing.three, paddingVertical: 14, gap: 2 },
+  row: { borderRadius: Radius.md, paddingHorizontal: Spacing.three + Spacing.one, paddingVertical: 16, gap: 2 },
 });

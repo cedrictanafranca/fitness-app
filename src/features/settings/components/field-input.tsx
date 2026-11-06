@@ -1,9 +1,9 @@
+import { useState } from 'react';
 import { Platform, StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-
-import { DANGER_COLOR } from './colors';
 
 /**
  * iOS has no decimal point on the plain numeric pad, so decimal input uses decimal-pad there.
@@ -24,30 +24,22 @@ export type FieldInputProps = {
   flex?: number;
 };
 
-export function FieldInput({
-  label,
-  value,
-  onChangeText,
-  error,
-  suffix,
-  placeholder,
-  numeric = true,
-  flex,
-}: FieldInputProps) {
+/** Outlined "Add Food" style row: label on the left, value on the right, unit after it; black border on focus. */
+export function FieldInput({ label, value, onChangeText, error, suffix, placeholder, numeric = true, flex }: FieldInputProps) {
   const theme = useTheme();
+  const [focused, setFocused] = useState(false);
+  const border = error ? theme.warning : focused ? theme.text : theme.border;
   return (
     <View style={[styles.wrap, flex != null && { flex }]}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <View
-        style={[
-          styles.inputRow,
-          { backgroundColor: theme.background, borderColor: error ? DANGER_COLOR : theme.backgroundSelected },
-        ]}>
+      <View style={[styles.inputRow, { backgroundColor: theme.surface, borderColor: border, borderWidth: focused ? 1.5 : 1 }]}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.label} numberOfLines={1}>
+          {label}
+        </ThemedText>
         <TextInput
           value={value}
           onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           keyboardType={numeric ? NUMERIC_KEYBOARD : 'default'}
           autoCorrect={false}
           autoCapitalize="none"
@@ -58,35 +50,23 @@ export function FieldInput({
         />
         {suffix ? <Text style={[styles.suffix, { color: theme.textSecondary }]}>{suffix}</Text> : null}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: theme.warning }]}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: 6,
-  },
+  wrap: { gap: 6 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    paddingHorizontal: 12,
-    minHeight: 44,
+    borderRadius: Radius.md,
+    paddingHorizontal: 16,
+    minHeight: 58,
+    gap: 10,
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 10,
-  },
-  suffix: {
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  error: {
-    color: DANGER_COLOR,
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  label: { fontSize: 15, flexShrink: 0 },
+  input: { flex: 1, fontSize: 16, paddingVertical: 10, textAlign: 'right', minWidth: 36 },
+  suffix: { fontSize: 14 },
+  error: { fontSize: 13, lineHeight: 18 },
 });

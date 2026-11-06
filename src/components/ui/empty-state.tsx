@@ -13,25 +13,25 @@ export interface EmptyStateProps {
   children?: ReactNode;
 }
 
+/** Centered illustration + bold title + grey line + action, as on the reference's empty lists. */
 export function EmptyState({ title, message, icon, children }: EmptyStateProps) {
   return (
     <View style={styles.container}>
       {icon}
-      <ThemedText type="default" style={styles.title}>
-        {title}
-      </ThemedText>
+      <ThemedText style={styles.title}>{title}</ThemedText>
       {message != null && (
         <ThemedText type="small" themeColor="textSecondary" style={styles.message}>
           {message}
         </ThemedText>
       )}
-      {children}
+      {children != null && <View style={styles.action}>{children}</View>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.five, paddingHorizontal: Spacing.four },
-  title: { fontWeight: 700, textAlign: 'center' },
-  message: { textAlign: 'center' },
+  title: { fontSize: 20, lineHeight: 26, fontWeight: 700, textAlign: 'center' },
+  message: { textAlign: 'center', fontSize: 15, lineHeight: 21 },
+  action: { alignSelf: 'stretch', alignItems: 'center', marginTop: Spacing.two },
 });
