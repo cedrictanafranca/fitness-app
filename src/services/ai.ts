@@ -17,6 +17,8 @@ export interface AnalyzeMealRequest {
   statedTotalGrams?: number;
   /** Names of saved recipes so the model can propose a recipeMatch. */
   recipeNames: string[];
+  /** Names of the user's saved foods (My foods), so the AI can map a grocery to the user's own entry. */
+  savedFoodNames?: string[];
   /** Household units the user has calibrated, so "2 scoops" can be mapped. */
   calibrations: Pick<PortionCalibration, 'name' | 'foodName' | 'grams'>[];
   /** Local hour 0–23, to help infer mealType. */

@@ -7,10 +7,12 @@
 import { buildMealItem } from '@/core/nutrition/build';
 import { findCalibration, normalizeUnit, recipeNutrition } from '@/core/nutrition/engine';
 import { choosePortion, typicalGramsFor } from '@/core/nutrition/portions';
+import { standardUnitGrams } from '@/core/nutrition/units';
 import type {
   AnalyzedMeal,
   AnalyzedMealItem,
   EstimateStatus,
+  Food,
   Macros,
   MealItem,
   MealItemRef,
@@ -21,7 +23,9 @@ import type {
 } from '@/core/types';
 import { ZERO_MACROS } from '@/core/types';
 import { newId } from '@/data/ids';
-import { cacheFood, searchFoods } from '@/services/foods';
+import { searchTermsFor } from '@/core/foods/search-terms';
+import { isRelevantMatch } from '@/server/normalize';
+import { cacheFood, searchFoods, type FoodCandidate } from '@/services/foods';
 
 export interface ResolveContext {
   recipes: Recipe[];
@@ -32,6 +36,8 @@ export interface ResolveContext {
   mealId?: string;
   /** Recently logged items; measured ones supply the user's usual portion for each food. */
   recentItems?: MealItem[];
+  /** The user's saved foods (My foods); an item the AI matched to one uses its label nutrition. */
+  savedFoods?: Food[];
 }
 
 interface Basis {
@@ -60,27 +66,42 @@ export function recipeBasis(recipe: Recipe): Basis {
   return { per100g: n.per100g, source: 'recipe', ref: { kind: 'recipe', id: recipe.id }, servings };
 }
 
-async function foodBasis(name: string): Promise<Basis | null> {
-  let res;
+async function cachedBasis(candidate: FoodCandidate): Promise<Basis> {
   try {
-    res = await searchFoods(name);
+    const food = await cacheFood(candidate);
+    return { per100g: food.per100g, source: food.source, ref: { kind: 'food', id: food.id }, servings: food.servings };
   } catch {
-    return null;
+    return { per100g: candidate.per100g, source: candidate.source, ref: { kind: 'none' }, servings: candidate.servings };
   }
-  const local = res.local.find((f) => f.saved);
-  if (local) return { per100g: local.per100g, source: local.source, ref: { kind: 'food', id: local.id }, servings: local.servings };
-  const candidate = res.remote[0];
-  if (candidate) {
+}
+
+/**
+ * Nutrition for a food name. A saved food wins; otherwise the first database entry that is the
+ * food the user named (not merely one that shares a word), trying simpler search terms when the
+ * exact name finds nothing. Returns `fallback` (an unrelated top hit) separately so the caller can
+ * prefer the AI's own estimate over it.
+ */
+async function foodBasis(name: string): Promise<{ basis: Basis | null; fallback: FoodCandidate | null }> {
+  let fallback: FoodCandidate | null = null;
+  let anyLocal: Basis | null = null;
+  for (const [i, term] of searchTermsFor(name).entries()) {
+    let res;
     try {
-      const food = await cacheFood(candidate);
-      return { per100g: food.per100g, source: food.source, ref: { kind: 'food', id: food.id }, servings: food.servings };
+      res = await searchFoods(term);
     } catch {
-      return { per100g: candidate.per100g, source: candidate.source, ref: { kind: 'none' }, servings: candidate.servings };
+      continue;
     }
+    if (i === 0) {
+      const saved = res.local.find((f) => f.saved);
+      if (saved) return { basis: { per100g: saved.per100g, source: saved.source, ref: { kind: 'food', id: saved.id }, servings: saved.servings }, fallback };
+      const local = res.local[0];
+      if (local) anyLocal = { per100g: local.per100g, source: local.source, ref: { kind: 'food', id: local.id }, servings: local.servings };
+    }
+    const match = res.remote.find((c) => isRelevantMatch(term, c.name));
+    if (match) return { basis: await cachedBasis(match), fallback };
+    fallback ??= res.remote[0] ?? null;
   }
-  const anyLocal = res.local[0];
-  if (anyLocal) return { per100g: anyLocal.per100g, source: anyLocal.source, ref: { kind: 'food', id: anyLocal.id }, servings: anyLocal.servings };
-  return null;
+  return { basis: anyLocal, fallback };
 }
 
 /** Grams for one unit of a serving, e.g. "2 cups" with servings [{label:'1 cup', grams:240}] → 240. */
@@ -106,10 +127,16 @@ async function resolveItem(
   let basis: Basis | null = null;
   const recipe = item.recipeMatch ? findRecipeByName(ctx.recipes, item.recipeMatch) : undefined;
   if (recipe) basis = recipeBasis(recipe);
-  if (!basis) basis = await foodBasis(item.name);
+  // A grocery the user saved from its label beats any database entry.
+  const saved = !basis && item.savedFoodMatch ? ctx.savedFoods?.find((f) => f.name === item.savedFoodMatch) : undefined;
+  if (saved) basis = { per100g: saved.per100g, source: saved.source, ref: { kind: 'food', id: saved.id }, servings: saved.servings };
+  let fallback: FoodCandidate | null = null;
+  if (!basis) ({ basis, fallback } = await foodBasis(item.name));
   if (!basis && item.estimatedPer100g) {
     basis = { per100g: item.estimatedPer100g, source: 'ai_estimate', ref: { kind: 'none' }, servings: [] };
   }
+  // Last resort: the closest database entry, even if it is not clearly the same food.
+  if (!basis && fallback) basis = await cachedBasis(fallback);
   const resolved: Basis = basis ?? { per100g: { ...ZERO_MACROS }, source: 'ai_estimate', ref: { kind: 'none' }, servings: [] };
 
   // ---- Quantity ----
@@ -128,7 +155,9 @@ async function resolveItem(
   } else if (item.quantity != null && item.unitLabel) {
     const cal = findCalibration(ctx.calibrations, item.unitLabel, item.name);
     const serving = cal ? undefined : servingUnitGrams(resolved.servings, item.unitLabel);
-    const per = cal?.grams ?? serving;
+    // "12 oz", "500 ml": a stated standard amount converts exactly, whatever the AI estimated.
+    const standard = standardUnitGrams(item.unitLabel);
+    const per = cal?.grams ?? standard ?? serving;
     if (per != null) {
       quantity = item.quantity;
       unitLabel = item.unitLabel;

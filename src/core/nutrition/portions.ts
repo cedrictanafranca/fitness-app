@@ -202,3 +202,6 @@ export function choosePortion(input: {
     label: aiBasis?.trim() || 'visual estimate',
   };
 }
+
+/** Below this identification confidence the review screen asks the user to check the food. */
+export const LOW_CONFIDENCE = 0.75;

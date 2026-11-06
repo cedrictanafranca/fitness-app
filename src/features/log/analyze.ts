@@ -1,7 +1,7 @@
 import { inferMealType } from '@/core/nutrition/engine';
 import { typicalGramsFor, typicalPortions } from '@/core/nutrition/portions';
 import type { TypicalPortion } from '@/core/nutrition/portions';
-import { calibrationsRepo, mealsRepo, recipesRepo } from '@/data/repos';
+import { calibrationsRepo, foodsRepo, mealsRepo, recipesRepo } from '@/data/repos';
 import { analyzeMeal } from '@/services/ai';
 
 import type { Composer } from './composer-store';
@@ -15,10 +15,11 @@ export async function analyzeComposer(c: Composer): Promise<LogDraft> {
   const now = new Date();
   const text = c.text.trim();
   const statedTotalGrams = parseGrams(c.gramsText);
-  const [recipes, calibrations, recentMeals] = await Promise.all([
+  const [recipes, calibrations, recentMeals, savedFoods] = await Promise.all([
     recipesRepo.list(),
     calibrationsRepo.list(),
     mealsRepo.listRecent(60),
+    foodsRepo.listSaved(),
   ]);
   const recentItems = recentMeals.flatMap((m) => m.items);
   const usual = typicalPortions(recentMeals);
@@ -29,6 +30,7 @@ export async function analyzeComposer(c: Composer): Promise<LogDraft> {
     text: text || undefined,
     statedTotalGrams,
     recipeNames: recipes.map((r) => r.name),
+    savedFoodNames: savedFoods.slice(0, 300).map((f) => f.name),
     calibrations: calibrations.map((x) => ({ name: x.name, foodName: x.foodName, grams: x.grams })),
     localHour: now.getHours(),
     recentPortions: usual.map((u) => ({ name: u.name, grams: u.grams })),
@@ -40,7 +42,7 @@ export async function analyzeComposer(c: Composer): Promise<LogDraft> {
     );
   }
 
-  const items = await resolveAnalyzedMeal(analyzed, { recipes, calibrations, statedTotalGrams, recentItems });
+  const items = await resolveAnalyzedMeal(analyzed, { recipes, calibrations, statedTotalGrams, recentItems, savedFoods });
 
   // "You usually log 180 g" hints for the review screen, keyed by draft item id.
   const portionHints: Record<string, TypicalPortion> = {};

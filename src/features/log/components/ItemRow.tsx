@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { PORTION_ADJUSTMENTS, type TypicalPortion } from '@/core/nutrition/portions';
+import { LOW_CONFIDENCE, PORTION_ADJUSTMENTS, type TypicalPortion } from '@/core/nutrition/portions';
 import { useTheme } from '@/hooks/use-theme';
 import type { MealItem } from '@/core/types';
 
@@ -41,6 +41,8 @@ function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemo
   const estimated = item.estimateStatus === 'estimated' && !missing;
   const showUsual = hint != null && (item.grams == null || Math.abs(hint.grams - item.grams) / hint.grams > 0.1);
   const noNutrition = item.source === 'ai_estimate' && item.per100g.calories === 0 && item.per100g.protein === 0;
+  // The AI was unsure what this is (e.g. pork vs chicken in a photo): ask the user to check.
+  const unsure = item.confidence != null && item.confidence < LOW_CONFIDENCE && item.source !== 'recipe';
 
   const change = (t: string) => {
     setText(t);
@@ -119,6 +121,11 @@ function ItemRowImpl({ item, hint, onGramsChange, onScale, onUseEstimate, onRemo
               ))
             : null}
         </View>
+      ) : null}
+      {unsure ? (
+        <ThemedText type="small" style={{ color: '#D9A441' }} accessibilityLabel={`Check that ${item.name} is right`}>
+          Not sure this is {item.name}. If it&apos;s something else, remove it and add the right food.
+        </ThemedText>
       ) : null}
       {noNutrition ? (
         <ThemedText type="small" style={{ color: '#D9A441' }}>

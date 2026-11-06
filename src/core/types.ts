@@ -231,6 +231,8 @@ export interface AnalyzedMealItem {
   unitLabel: string | null;
   /** Name of a saved recipe the model thinks this matches, if any. */
   recipeMatch: string | null;
+  /** Name of a food the user saved (My foods) that this item is, if any. */
+  savedFoodMatch: string | null;
   confidence: number;
   /** Per-100 g fallback the model proposes when no database match exists. Always labeled ai_estimate. */
   estimatedPer100g: Macros | null;
