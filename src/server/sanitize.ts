@@ -69,6 +69,7 @@ export function sanitizeAnalyzedMeal(meal: Analyzed, input: AnalyzeInput): Analy
         quantity,
         unitLabel,
         recipeMatch: i.recipeMatch !== null && input.recipeNames.includes(i.recipeMatch) ? i.recipeMatch : null,
+        savedFoodMatch: i.savedFoodMatch !== null && input.savedFoodNames.includes(i.savedFoodMatch) ? i.savedFoodMatch : null,
         confidence: clamp01(i.confidence),
         estimatedPer100g: per100,
         gramsRange,

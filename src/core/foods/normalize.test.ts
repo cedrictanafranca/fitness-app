@@ -151,8 +151,8 @@ describe('ranking', () => {
       ],
       3,
     );
-    // An unrelated reference entry (beans) no longer outranks real matches.
-    expect(ranked.map((r) => r.sourceRef)).toEqual(['d', 'b', 'a']);
+    // Real matches first; rice pudding is a different food than rice, so it ranks with the non-matches.
+    expect(ranked.map((r) => r.sourceRef).slice(0, 2)).toEqual(['d', 'b']);
   });
 
   it('scores exact above prefix above partial', () => {
@@ -215,7 +215,7 @@ describe('ranking', () => {
 
 describe('sanitizeAnalyzedMeal', () => {
   const base = {
-    recipeNames: ["Mom's chicken adobo"],
+    recipeNames: ["Mom's chicken adobo"], savedFoodNames: [],
     calibrations: [{ name: 'scoop', foodName: 'rice', grams: 145 }],
     localHour: 13,
     recentPortions: [],
@@ -226,7 +226,7 @@ describe('sanitizeAnalyzedMeal', () => {
     statedGrams: null,
     quantity: 2,
     unitLabel: 'scoop',
-    recipeMatch: null,
+    recipeMatch: null, savedFoodMatch: null,
     confidence: 1.4,
     estimatedPer100g: null,
     gramsRange: null,
@@ -338,5 +338,141 @@ describe('searchTermsFor', () => {
   it('falls back from a detailed name to simpler terms', () => {
     expect(searchTermsFor('milk, skim (nonfat), fluid')).toEqual(['milk, skim (nonfat), fluid', 'milk, skim, fluid', 'milk, skim']);
     expect(searchTermsFor('banana')).toEqual(['banana']);
+  });
+});
+
+describe('saved-food matches', () => {
+  const base = {
+    name: 'oat milk, vanilla',
+    estimatedGrams: 250,
+    statedGrams: null,
+    quantity: null,
+    unitLabel: null,
+    recipeMatch: null,
+    confidence: 0.9,
+    estimatedPer100g: null,
+    gramsRange: null,
+    portionBasis: null,
+  };
+  const input = { text: 'a glass of vanilla oat milk', recipeNames: [], savedFoodNames: ["Earth's Own Oat Vanilla"], calibrations: [], localHour: 9, recentPortions: [] };
+  const run = (savedFoodMatch: string | null) =>
+    sanitizeAnalyzedMeal({ items: [{ ...base, savedFoodMatch }], mealType: null, clarification: null, notes: null }, input).items[0].savedFoodMatch;
+
+  it("keeps a match to one of the user's saved foods", () => {
+    expect(run("Earth's Own Oat Vanilla")).toBe("Earth's Own Oat Vanilla");
+  });
+
+  it('drops a saved-food name the user does not have', () => {
+    expect(run('Oatly Oat Milk')).toBeNull();
+  });
+});
+
+describe('USDA naming patterns', () => {
+  const mk = (name: string, ref: string): NormalizedFood => ({
+    tier: 0,
+    candidate: { name, per100g: { calories: 1, protein: 0, carbs: 0, fat: 0 }, source: 'usda', sourceRef: ref, servings: [] },
+  });
+  const top = (query: string, names: string[]) => rankFoods(query, names.map((n, i) => mk(n, `r${i}`)), 1)[0].name;
+
+  // Candidate lists as USDA returned them (Nov 2026).
+  it('finds foods filed under a group or category word', () => {
+    expect(top('bacon, cooked', ['Bacon, meatless', 'Bacon, turkey, microwaved', 'Pork, cured, bacon, cooked, baked'])).toBe('Pork, cured, bacon, cooked, baked');
+    expect(top('shrimp, cooked', ['Snacks, shrimp cracker', 'Fast foods, shrimp, breaded and fried', 'Crustaceans, shrimp, cooked'])).toBe('Crustaceans, shrimp, cooked');
+  });
+
+  it('ignores parenthetical notes and prefers the default form', () => {
+    expect(
+      top('brown rice, cooked', [
+        'Rice, brown, parboiled, cooked, UNCLE BENS',
+        "Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)",
+      ]),
+    ).toBe("Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)");
+    expect(top('tomato, raw', ['Tomatoes, grape, raw', 'Tomatoes, green, raw', 'Tomatoes, red, ripe, raw, year round average'])).toBe(
+      'Tomatoes, red, ripe, raw, year round average',
+    );
+  });
+
+  it('rejects concentrated, partial and restaurant versions the user did not name', () => {
+    expect(top('milk, 2%', ['Milk, evaporated, 2% fat, with added vitamin A and vitamin D', 'Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D'])).toBe(
+      'Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D',
+    );
+    expect(top('grapes, raw', ['Grape leaves, raw', 'Grapes, red or green (European type, such as Thompson seedless), raw'])).toBe(
+      'Grapes, red or green (European type, such as Thompson seedless), raw',
+    );
+    expect(top('egg, scrambled', ['Fast foods, egg, scrambled', 'Egg, whole, cooked, scrambled'])).toBe('Egg, whole, cooked, scrambled');
+  });
+
+  it('tells thigh with skin from meat only', () => {
+    expect(
+      top('chicken thigh, roasted, with skin', [
+        'Chicken, broilers or fryers, thigh, meat only, cooked, roasted',
+        'Chicken, broilers or fryers, thigh, meat and skin, cooked, roasted',
+      ]),
+    ).toBe('Chicken, broilers or fryers, thigh, meat and skin, cooked, roasted');
+  });
+});
+
+describe('cooking-method and plain-drink labels', () => {
+  const mk = (name: string, ref: string): NormalizedFood => ({
+    tier: 0,
+    candidate: { name, per100g: { calories: 1, protein: 0, carbs: 0, fat: 0 }, source: 'usda', sourceRef: ref, servings: [] },
+  });
+  const top = (query: string, names: string[]) => rankFoods(query, names.map((n, i) => mk(n, `r${i}`)), 1)[0].name;
+
+  it('reads "cooked, dry heat" as cooked, not as a dry product', () => {
+    expect(isRelevantMatch('salmon, grilled', 'Fish, salmon, Atlantic, farmed, cooked, dry heat')).toBe(true);
+    expect(
+      top('salmon, grilled', [
+        'Fish, salmon, red, (sockeye), kippered (Alaska Native)',
+        'Fish, salmon, chum, dried (Alaska Native)',
+        'Fish, salmon, Atlantic, farmed, cooked, dry heat',
+      ]),
+    ).toBe('Fish, salmon, Atlantic, farmed, cooked, dry heat');
+  });
+
+  it('logs water as water, not water convolvulus', () => {
+    expect(top('water', ['Water convolvulus,raw', 'Water, bottled, generic', 'Beverages, water, tap, well'])).toBe('Water, bottled, generic');
+  });
+});
+
+describe('typical value among near-equal matches', () => {
+  const mk = (name: string, kcal: number, ref: string): NormalizedFood => ({
+    tier: 0,
+    candidate: { name, per100g: { calories: kcal, protein: 0, carbs: 0, fat: 0 }, source: 'usda', sourceRef: ref, servings: [] },
+  });
+
+  it('does not let an outlier variety win on word count', () => {
+    const ranked = rankFoods(
+      'salmon, cooked',
+      [
+        mk('Fish, salmon, chum, cooked, dry heat', 154, 'a'),
+        mk('Fish, salmon, coho, wild, cooked, dry heat', 139, 'b'),
+        mk('Fish, salmon, Atlantic, wild, cooked, dry heat', 182, 'c'),
+        mk('Fish, salmon, sockeye, cooked, dry heat', 169, 'd'),
+        mk('Fish, salmon, Atlantic, farmed, cooked, dry heat', 206, 'e'),
+      ],
+      1,
+    );
+    expect(ranked[0].per100g.calories).toBe(169);
+  });
+
+  it('prefers the cooking method the user named', () => {
+    const ranked = rankFoods(
+      'sweet potato, baked',
+      [mk('Sweet potato, cooked, boiled, without skin', 76, 'a'), mk('Sweet potato, cooked, baked in skin, flesh, without salt', 90, 'b')],
+      1,
+    );
+    expect(ranked[0].per100g.calories).toBe(90);
+  });
+});
+
+describe('lead food name', () => {
+  it('rejects a different food whose name starts with the same word', () => {
+    expect(isRelevantMatch('water', 'Water convolvulus,raw')).toBe(false);
+    expect(isRelevantMatch('water', 'Water, bottled, generic')).toBe(true);
+    expect(isRelevantMatch('potato, baked', 'Sweet potato, cooked, baked in skin, flesh, without salt')).toBe(false);
+    expect(isRelevantMatch('almonds', 'Almond butter, creamy')).toBe(false);
+    expect(isRelevantMatch('bacon, cooked', 'Pork, cured, bacon, cooked, baked')).toBe(true);
+    expect(isRelevantMatch('chicken', 'Chicken, broilers or fryers, breast, meat only, cooked, roasted')).toBe(true);
   });
 });

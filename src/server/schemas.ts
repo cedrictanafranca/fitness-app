@@ -32,6 +32,8 @@ export const analyzeMealRequestSchema = z.object({
   text: z.string().max(4000).optional(),
   statedTotalGrams: z.number().positive().max(20000).optional(),
   recipeNames: z.array(z.string().max(200)).max(200).default([]),
+  /** Names of foods the user saved (My foods), so a described grocery maps to the user's own entry. */
+  savedFoodNames: z.array(z.string().max(200)).max(300).default([]),
   calibrations: z
     .array(
       z.object({
@@ -59,6 +61,7 @@ export const analyzedMealItemSchema = z.object({
   quantity: z.number().nullable(),
   unitLabel: z.string().nullable(),
   recipeMatch: z.string().nullable(),
+  savedFoodMatch: z.string().nullable(),
   confidence: z.number(),
   estimatedPer100g: macrosSchema.nullable(),
   gramsRange: portionRangeSchema.nullable(),

@@ -35,13 +35,17 @@ export async function analyzeMeal(input: {
   imageMimeType?: 'image/jpeg' | 'image/png';
   statedTotalGrams?: number;
   localHour?: number;
+  recipeNames?: string[];
+  savedFoodNames?: string[];
+  calibrations?: { name: string; foodName?: string; grams: number }[];
 }): Promise<AnalyzedMeal> {
   const raw = await postJson('/api/ai/analyze-meal', {
-    ...input,
     recipeNames: [],
+    savedFoodNames: [],
     calibrations: [],
-    localHour: input.localHour ?? 12,
     recentPortions: [],
+    ...input,
+    localHour: input.localHour ?? 12,
   });
   return analyzedMealSchema.parse(raw) as AnalyzedMeal;
 }

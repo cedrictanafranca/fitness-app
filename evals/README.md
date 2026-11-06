@@ -1,8 +1,12 @@
 # Evals
 
 Live accuracy checks for the AI features. Unlike `npm test`, these call the real Claude and
-food-database APIs through the running dev server, so they cost a little API credit (roughly a
-cent or two per full run) and results vary slightly from run to run.
+food-database APIs through the running dev server, so they cost API credit and results vary from
+run to run.
+
+**Cost:** about $0.50 of Anthropic credit per full run (38 meal cases and 11 assistant requests),
+about $1 with `EVAL_REPEATS=2`. The database check makes no Claude calls and is free. To run only
+that: `npx vitest run --config vitest.evals.config.ts evals/database.eval.ts`.
 
 ## Running
 
@@ -11,7 +15,8 @@ cent or two per full run) and results vary slightly from run to run.
 3. In another terminal: `npm run eval`.
 
 Reports land in `evals/results/` as Markdown and JSON. Set `EVAL_API_URL` to point at another
-server.
+server. Set `EVAL_REPEATS=2` (or more) to run each meal case several times: Claude's answers vary,
+and a case that passes only some of the time is marked "flaky".
 
 ## What is covered
 
@@ -19,8 +24,13 @@ server.
 | --- | --- | --- |
 | Text descriptions | `cases/meals.ts` | Items found, grams, the database entry picked, final calories and protein vs USDA references. |
 | Voice-style transcripts | `cases/meals.ts` | The same, phrased as speech recognition returns it (fillers, number words, a self-correction). |
-| Photos | `cases/photos.ts` | Foods identified and calories from photos alone. |
+| Plant milks, own data, units, brands | `cases/meals.ts` | Oat milk is not logged as dairy; a saved grocery, calibrated scoop and saved recipe are used; oz/ml sizes convert; beer, wine, a Big Mac, water. |
+| Photos | `cases/photos.ts` | Foods identified and calories from photos alone. A wrong food the app flags for the user to check is reported, not failed. |
+| Common foods | `database.eval.ts` | 68 everyday foods, named as the AI names them, through the app's lookup, against USDA kcal/100 g. No AI calls. |
 | Assistant | `assistant.eval.ts` | Each request becomes the right action on the right meal or item, and answers quote the app's numbers. |
+
+References come from USDA. Where its two datasets disagree (SR Legacy and the newer Foundation
+data, e.g. apples, hummus, tuna, pineapple), the reference sits between them and the case notes say so.
 
 Meal cases report three errors so a miss can be traced: **portion** (Claude's grams, priced at
 reference nutrition), **database** (the entry the app picked, at reference grams) and **total**

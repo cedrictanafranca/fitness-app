@@ -7,10 +7,12 @@
 import { buildMealItem } from '@/core/nutrition/build';
 import { findCalibration, normalizeUnit, recipeNutrition } from '@/core/nutrition/engine';
 import { choosePortion, typicalGramsFor } from '@/core/nutrition/portions';
+import { standardUnitGrams } from '@/core/nutrition/units';
 import type {
   AnalyzedMeal,
   AnalyzedMealItem,
   EstimateStatus,
+  Food,
   Macros,
   MealItem,
   MealItemRef,
@@ -34,6 +36,8 @@ export interface ResolveContext {
   mealId?: string;
   /** Recently logged items; measured ones supply the user's usual portion for each food. */
   recentItems?: MealItem[];
+  /** The user's saved foods (My foods); an item the AI matched to one uses its label nutrition. */
+  savedFoods?: Food[];
 }
 
 interface Basis {
@@ -123,6 +127,9 @@ async function resolveItem(
   let basis: Basis | null = null;
   const recipe = item.recipeMatch ? findRecipeByName(ctx.recipes, item.recipeMatch) : undefined;
   if (recipe) basis = recipeBasis(recipe);
+  // A grocery the user saved from its label beats any database entry.
+  const saved = !basis && item.savedFoodMatch ? ctx.savedFoods?.find((f) => f.name === item.savedFoodMatch) : undefined;
+  if (saved) basis = { per100g: saved.per100g, source: saved.source, ref: { kind: 'food', id: saved.id }, servings: saved.servings };
   let fallback: FoodCandidate | null = null;
   if (!basis) ({ basis, fallback } = await foodBasis(item.name));
   if (!basis && item.estimatedPer100g) {
@@ -148,7 +155,9 @@ async function resolveItem(
   } else if (item.quantity != null && item.unitLabel) {
     const cal = findCalibration(ctx.calibrations, item.unitLabel, item.name);
     const serving = cal ? undefined : servingUnitGrams(resolved.servings, item.unitLabel);
-    const per = cal?.grams ?? serving;
+    // "12 oz", "500 ml": a stated standard amount converts exactly, whatever the AI estimated.
+    const standard = standardUnitGrams(item.unitLabel);
+    const per = cal?.grams ?? standard ?? serving;
     if (per != null) {
       quantity = item.quantity;
       unitLabel = item.unitLabel;
