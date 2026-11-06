@@ -75,7 +75,7 @@ export function WeightTrendCard({ history, today, units }: { history: WeightReco
             const delta = c.deltaKg == null ? null : round1(kgToUnits(c.deltaKg, units));
             const dir: { label: string; icon: IconName; color: string } =
               delta == null
-                ? { label: 'Not enough data', icon: 'arrow-right', color: theme.textSecondary }
+                ? { label: 'No data yet', icon: 'arrow-right', color: theme.textSecondary }
                 : delta > 0
                   ? { label: 'Increase', icon: 'arrow-up-right', color: theme.carbs }
                   : delta < 0

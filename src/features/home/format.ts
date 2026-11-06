@@ -8,9 +8,13 @@ export const MEAL_TYPES: { type: MealType; label: string }[] = [
   { type: 'snack', label: 'Snacks' },
 ];
 
+/**
+ * Local noon on that date. Noon (not midnight) keeps formatting stable on daylight-saving days,
+ * where Hermes formats local midnight as the previous day (Nov 1 2026 showed as "Sat").
+ */
 export function parseDateKey(key: DateKey): Date {
   const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(y, m - 1, d, 12);
 }
 
 export function formatNumber(n: number): string {

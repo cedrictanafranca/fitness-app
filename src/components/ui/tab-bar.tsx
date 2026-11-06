@@ -24,6 +24,15 @@ export interface FloatingTabBarProps extends TabBarProps {
   trailing?: ReactNode;
 }
 
+/** Pill height (60 tab + 2×6 padding). */
+const PILL_HEIGHT = 72;
+
+/** Space the floating tab bar covers at the bottom of the screen, including the home-indicator area. */
+export function useTabBarHeight(): number {
+  const insets = useSafeAreaInsets();
+  return PILL_HEIGHT + Math.max(insets.bottom, Spacing.three);
+}
+
 /** The reference's floating white pill tab bar: selected tab sits in a grey circle with a filled icon. */
 export function FloatingTabBar({ state, navigateToTab, tabs, trailing }: FloatingTabBarProps) {
   const theme = useTheme();

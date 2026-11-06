@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTabBarHeight } from '@/components/ui/tab-bar';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function SaveBar({
@@ -23,6 +24,7 @@ export function SaveBar({
   onSave: () => void;
 }) {
   const theme = useTheme();
+  const tabBarHeight = useTabBarHeight();
 
   let status = 'All changes saved';
   if (hasErrors) status = 'Fix the highlighted fields to save';
@@ -30,7 +32,7 @@ export function SaveBar({
   else if (saved) status = 'Saved';
 
   return (
-    <View style={[styles.bar, { backgroundColor: theme.background }]}>
+    <View style={[styles.bar, { backgroundColor: theme.background, paddingBottom: tabBarHeight + Spacing.two }]}>
       <View style={styles.statusRow}>
         {saveError ? (
           <Text style={[styles.error, { color: theme.warning }]}>{saveError}</Text>
@@ -49,7 +51,6 @@ const styles = StyleSheet.create({
   bar: {
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: BottomTabInset + Spacing.one,
     gap: Spacing.two,
   },
   statusRow: { minHeight: 20, alignItems: 'center' },
