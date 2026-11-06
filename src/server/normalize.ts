@@ -198,11 +198,96 @@ export function normalizeOffProduct(p: OffProduct): NormalizedFood | null {
 
 // ---------- Ranking ----------
 
+/**
+ * Phrases that describe the usual whole cut, removed before comparing names, so "thigh, meat and
+ * skin" reads as a thigh while a bare "skin" (the skin on its own) stays visible as a part.
+ */
+const WHOLE_CUT_PHRASES = /\b(meat and skin|meat only|with skin|without skin|skin on|skin-on|skinless)\b/g;
+
 function tokens(s: string): string[] {
-  return s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  return s.toLowerCase().replace(WHOLE_CUT_PHRASES, ' ').split(/[^a-z0-9]+/).filter(Boolean);
 }
 
-/** 0..1 similarity of a food name to the query. Rewards exact / prefix matches and token coverage. */
+/** "apples" → "apple", "tomatoes" → "tomato", "oats" → "oat"; leaves "glass" alone. */
+function singular(t: string): string {
+  if (t.length > 4 && t.endsWith('oes')) return t.slice(0, -2);
+  if (t.length > 3 && t.endsWith('s') && !t.endsWith('ss')) return t.slice(0, -1);
+  return t;
+}
+
+function tokenMatches(queryToken: string, nameToken: string): boolean {
+  return nameToken === queryToken || nameToken.startsWith(queryToken) || singular(nameToken) === singular(queryToken);
+}
+
+/**
+ * Words that describe the default, commonly eaten form of a food (or are filler), so their
+ * presence in a database name does not make it a different food than the user asked for.
+ * Cooking methods that change calories a lot (fried, breaded) are deliberately absent.
+ */
+const GENERIC = new Set([
+  'raw', 'cooked', 'boiled', 'boiling', 'steamed', 'grilled', 'roasted', 'baked', 'broiled', 'microwaved', 'microwaving',
+  'prepared', 'ready', 'to', 'eat', 'serve', 'drink', 'regular', 'enriched', 'unenriched', 'plain', 'fresh', 'all',
+  'commercial', 'varieties', 'variety', 'with', 'without', 'and', 'or', 'of', 'in', 'from', 'the', 'a', 'salt', 'added',
+  'meat', 'only', 'flesh', 'peeled', 'drained', 'solids', 'includes', 'nfs', 'ns', 'long', 'grain', 'medium',
+  'quick', 'instant', 'carbonated', 'ripe', 'whole', 'unsalted', 'boneless', 'skinless', 'broiler', 'fryers',
+]);
+
+/** USDA category prefixes ("Beverages, …", "Cereals, …") that name a group, not the food. */
+const CATEGORY = new Set(['beverages', 'beverage', 'cereals', 'cereal', 'snacks', 'spices', 'soup', 'soups', 'candies', 'babyfood', 'alcoholic', 'fast', 'foods', 'restaurant']);
+
+const COOKED_WORDS = new Set(['cooked', 'boiled', 'steamed', 'grilled', 'roasted', 'baked', 'broiled', 'fried', 'scrambled', 'poached', 'microwaved']);
+
+/** Dry, powdered or concentrated forms: priced per 100 g of powder, not of the drink or dish. */
+const DRY_WORDS = new Set(['dry', 'powder', 'powdered', 'mix', 'dehydrated', 'concentrate', 'unprepared', 'granules', 'flour']);
+const PREPARED_WORDS = new Set(['prepared', 'ready', 'cooked', 'reconstituted', 'brewed']);
+
+function isGeneric(t: string): boolean {
+  return GENERIC.has(t) || GENERIC.has(singular(t));
+}
+
+/** "Instant" without "prepared" is the dry product ("tea, instant, lemon" = the powder). */
+function isDryForm(nameTokens: string[]): boolean {
+  if (nameTokens.some((t) => DRY_WORDS.has(t))) return true;
+  return nameTokens.includes('instant') && !nameTokens.some((t) => PREPARED_WORDS.has(t));
+}
+
+/** Entries that are one part of the food on its own ("Chicken, skin (drumsticks and thighs)"). */
+function isPartOnly(nameTokens: string[]): boolean {
+  return nameTokens.includes('skin');
+}
+
+/** The main food word of a database name: its first word that is not a category or a descriptor. */
+function headToken(nameTokens: string[]): string | undefined {
+  return nameTokens.find((t) => !CATEGORY.has(t) && !isGeneric(t) && !/^\d+$/.test(t));
+}
+
+/** Share of the query's non-generic words found in the name (all words when every word is generic). */
+function coreCoverage(queryTokens: string[], nameTokens: string[]): number {
+  const core = queryTokens.filter((t) => !isGeneric(t));
+  const qs = core.length ? core : queryTokens;
+  if (!qs.length) return 0;
+  return qs.filter((q) => nameTokens.some((n) => tokenMatches(q, n))).length / qs.length;
+}
+
+/**
+ * True when a database entry is the food the user named: its main word appears in the query and
+ * it covers at least half of the query's distinguishing words. "Rose-apples" is not "apple";
+ * "Cereals, WHEATENA" is not "oatmeal"; "Beets, raw" is not "banana, raw".
+ */
+export function isRelevantMatch(query: string, name: string): boolean {
+  const qt = tokens(query);
+  const nt = tokens(name);
+  const head = headToken(nt);
+  if (!head || !qt.some((q) => tokenMatches(q, head))) return false;
+  if ((isDryForm(nt) && !isDryForm(qt)) || (isPartOnly(nt) && !isPartOnly(qt))) return false;
+  return coreCoverage(qt, nt) >= 0.5;
+}
+
+/**
+ * 0..1 similarity of a food name to the query. Rewards covering the query's words and penalises
+ * words the user did not ask for that change the food ("glutinous", "Florida", "pita"), plus a
+ * raw/cooked mismatch, so "white rice, cooked" picks regular long-grain rice, not glutinous rice.
+ */
 export function nameSimilarity(query: string, name: string): number {
   const q = query.trim().toLowerCase();
   const n = name.trim().toLowerCase();
@@ -211,15 +296,27 @@ export function nameSimilarity(query: string, name: string): number {
   const qt = tokens(q);
   const nt = tokens(n);
   if (!qt.length || !nt.length) return 0;
-  const covered = qt.filter((t) => nt.some((x) => x === t || x.startsWith(t))).length / qt.length;
-  // Extra (unmatched) words in the food name dilute the score slightly: "Rice" beats "Rice pudding with raisins".
-  const precision = qt.length / Math.max(nt.length, qt.length);
+  const covered = qt.filter((t) => nt.some((x) => tokenMatches(t, x))).length / qt.length;
   if (covered === 0) return 0;
-  const prefixBonus = n.startsWith(q) ? 0.15 : 0;
-  return Math.min(0.99, covered * 0.7 + precision * 0.15 + prefixBonus);
+
+  const extras = nt.filter((x) => !isGeneric(x) && !CATEGORY.has(x) && !/^\d+$/.test(x) && !qt.some((t) => tokenMatches(t, x)));
+  const variantPenalty = Math.min(0.4, extras.length * 0.08);
+  const queryCooked = qt.some((t) => COOKED_WORDS.has(t));
+  const queryRaw = qt.includes('raw');
+  const nameRaw = nt.includes('raw');
+  const nameCooked = nt.some((t) => COOKED_WORDS.has(t));
+  const statePenalty = (queryCooked && nameRaw && !nameCooked) || (queryRaw && nameCooked && !nameRaw) ? 0.15 : 0;
+  // Unasked-for powder or a lone part of the food is a different calorie density entirely.
+  const formPenalty = (isDryForm(nt) && !isDryForm(qt) ? 0.3 : 0) + (isPartOnly(nt) && !isPartOnly(qt) ? 0.3 : 0);
+  const prefixBonus = n.startsWith(q) ? 0.1 : 0;
+  return Math.max(0.01, Math.min(0.99, covered * 0.75 + 0.2 + prefixBonus - variantPenalty - statePenalty - formPenalty));
 }
 
-/** Dedupe, rank (reference data first, then similarity) and cap. */
+/**
+ * Dedupe, rank and cap. Entries that are the food the user named come first; among those,
+ * curated reference data (USDA Foundation / SR Legacy) beats branded or crowd-sourced data, then
+ * the closest name wins. An unrelated reference entry no longer outranks a real match.
+ */
 export function rankFoods(query: string, foods: NormalizedFood[], cap = 20): RemoteFoodCandidate[] {
   const seen = new Set<string>();
   const unique = foods.filter((f) => {
@@ -228,9 +325,14 @@ export function rankFoods(query: string, foods: NormalizedFood[], cap = 20): Rem
     return true;
   });
   return unique
-    .map((f) => ({ f, score: nameSimilarity(query, f.candidate.name) }))
+    .map((f) => ({
+      f,
+      relevant: isRelevantMatch(query, f.candidate.name) ? 0 : 1,
+      score: nameSimilarity(query, f.candidate.name),
+    }))
     .sort(
       (a, b) =>
+        a.relevant - b.relevant ||
         a.f.tier - b.f.tier ||
         b.score - a.score ||
         a.f.candidate.name.length - b.f.candidate.name.length,

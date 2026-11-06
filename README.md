@@ -53,6 +53,7 @@ npx expo start --web
 npm run typecheck   # tsc
 npm run lint        # eslint
 npm test            # vitest — nutrition engine + food normalizers
+npm run eval        # live AI accuracy evals (needs the dev server + keys; see evals/README.md)
 ```
 
 ## Layout

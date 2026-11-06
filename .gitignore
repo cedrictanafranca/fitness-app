@@ -44,3 +44,6 @@ example
 
 # env
 .env
+
+# Live eval output (the latest Markdown reports are committed as a baseline)
+evals/results/*.json

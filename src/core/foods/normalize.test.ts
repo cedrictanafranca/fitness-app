@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isRelevantMatch,
   nameSimilarity,
   normalizeOffProduct,
   normalizeUsdaFood,
@@ -7,6 +8,7 @@ import {
   tidyName,
   type NormalizedFood,
 } from '../../server/normalize';
+import { searchTermsFor } from './search-terms';
 import { sanitizeAnalyzedMeal } from '../../server/sanitize';
 
 // Shape of a /fdc/v1/foods/search result (nutrientId + nutrientName/unitName/value).
@@ -137,7 +139,7 @@ describe('ranking', () => {
     },
   });
 
-  it('puts reference data first, then closest name, caps and dedupes', () => {
+  it('puts matching foods first (reference data before branded), caps and dedupes', () => {
     const ranked = rankFoods(
       'rice',
       [
@@ -149,13 +151,60 @@ describe('ranking', () => {
       ],
       3,
     );
-    expect(ranked.map((r) => r.sourceRef)).toEqual(['d', 'c', 'b']);
+    // An unrelated reference entry (beans) no longer outranks real matches.
+    expect(ranked.map((r) => r.sourceRef)).toEqual(['d', 'b', 'a']);
   });
 
   it('scores exact above prefix above partial', () => {
     expect(nameSimilarity('rice', 'Rice')).toBe(1);
     expect(nameSimilarity('rice', 'Rice, white')).toBeGreaterThan(nameSimilarity('rice', 'Wild rice mix blend'));
     expect(nameSimilarity('rice', 'Apple')).toBe(0);
+  });
+
+  // Candidate lists below are what USDA returned for these queries (Nov 2026), in USDA's order.
+  const top = (query: string, names: string[]) =>
+    rankFoods(query, names.map((n, i) => mk(n, `r${i}`, 0)), 1)[0].name;
+
+  it('prefers the regular form over an unrequested variant', () => {
+    expect(
+      top('white rice, cooked', [
+        'Rice, white, glutinous, unenriched, cooked',
+        'Rice, white, short-grain, enriched, cooked',
+        'Rice, white, long-grain, regular, enriched, cooked',
+        'Rice, white, long-grain, parboiled, enriched, cooked',
+      ]),
+    ).toBe('Rice, white, long-grain, regular, enriched, cooked');
+    expect(
+      top('avocado, raw', ['Avocados, raw, Florida', 'Avocados, raw, California', 'Avocado, Hass, peeled, raw', 'Avocados, raw, all commercial varieties', 'Oil, avocado']),
+    ).toBe('Avocados, raw, all commercial varieties');
+  });
+
+  it('rejects a different food that shares a word', () => {
+    expect(top('apple, raw', ['Rose-apples, raw', 'Apples, raw, without skin', 'Mammy-apple, (mamey), raw'])).toBe('Apples, raw, without skin');
+    expect(top('banana, raw', ['Pepper, banana, raw', 'Bananas, raw', 'Beets, raw'])).toBe('Bananas, raw');
+    expect(
+      top('oats, cooked with water', [
+        'Cereals, WHEATENA, cooked with water',
+        'Water convolvulus, cooked, boiled, drained, with salt',
+        'Cereals, oats, regular and quick, unenriched, cooked with water (includes boiling and microwaving), without salt',
+      ]),
+    ).toBe('Cereals, oats, regular and quick, unenriched, cooked with water (includes boiling and microwaving), without salt');
+    expect(top('cola, regular', ['Crackers, wheat, regular', 'Beverages, ZEVIA, cola', 'Beverages, carbonated, cola, regular'])).toBe(
+      'Beverages, carbonated, cola, regular',
+    );
+  });
+
+  it('matches cooked to cooked', () => {
+    expect(top('chicken breast, grilled', ['Chicken, breast, boneless, skinless, raw', 'Lunchmeat, chicken breast, sliced', 'Chicken, broiler or fryers, breast, skinless, boneless, meat only, cooked, grilled'])).toBe(
+      'Chicken, broiler or fryers, breast, skinless, boneless, meat only, cooked, grilled',
+    );
+  });
+
+  it('knows a match from a near miss', () => {
+    expect(isRelevantMatch('apple, raw', 'Rose-apples, raw')).toBe(false);
+    expect(isRelevantMatch('apple, raw', 'Apples, raw, without skin')).toBe(true);
+    expect(isRelevantMatch('whole wheat bread', 'Bread, 100% whole wheat, commercial')).toBe(true);
+    expect(isRelevantMatch('oats, cooked with water', 'Cereals, WHEATENA, cooked with water')).toBe(false);
   });
 
   it('title-cases only all-caps names', () => {
@@ -231,5 +280,42 @@ describe('sanitizeAnalyzedMeal', () => {
       { ...base, text: 'mom adobo' },
     );
     expect(out.items[0]?.recipeMatch).toBe("Mom's chicken adobo");
+  });
+});
+
+describe('form and part filters', () => {
+  const mk = (name: string, ref: string): NormalizedFood => ({
+    tier: 0,
+    candidate: { name, per100g: { calories: 1, protein: 0, carbs: 0, fat: 0 }, source: 'usda', sourceRef: ref, servings: [] },
+  });
+  const top = (query: string, names: string[]) => rankFoods(query, names.map((n, i) => mk(n, `r${i}`)), 1)[0].name;
+
+  it('prices a drink as the drink, not its powder', () => {
+    expect(
+      top('tea with lemon', [
+        'Beverages, tea, instant, lemon, with added ascorbic acid',
+        'Beverages, tea, instant, lemon, sweetened, prepared with water',
+        'Beverages, tea, instant, lemon, unsweetened',
+      ]),
+    ).toBe('Beverages, tea, instant, lemon, sweetened, prepared with water');
+    expect(isRelevantMatch('nonfat milk', 'Milk, dry, nonfat, calcium reduced')).toBe(false);
+    expect(isRelevantMatch('milk powder', 'Milk, dry, nonfat, calcium reduced')).toBe(true);
+  });
+
+  it('does not price a thigh as its skin', () => {
+    expect(
+      top('chicken thigh, grilled, with skin', [
+        'Chicken, skin (drumsticks and thighs), with added solution, cooked, roasted',
+        'Chicken, skin (drumsticks and thighs), cooked, roasted',
+        'Chicken, broilers or fryers, thigh, meat and skin, cooked, roasted',
+      ]),
+    ).toBe('Chicken, broilers or fryers, thigh, meat and skin, cooked, roasted');
+  });
+});
+
+describe('searchTermsFor', () => {
+  it('falls back from a detailed name to simpler terms', () => {
+    expect(searchTermsFor('milk, skim (nonfat), fluid')).toEqual(['milk, skim (nonfat), fluid', 'milk, skim, fluid', 'milk, skim']);
+    expect(searchTermsFor('banana')).toEqual(['banana']);
   });
 });

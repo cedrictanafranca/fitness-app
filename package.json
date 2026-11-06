@@ -52,7 +52,8 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "eval": "vitest run --config vitest.evals.config.ts"
   },
   "private": true
 }
