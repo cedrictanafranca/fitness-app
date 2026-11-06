@@ -313,6 +313,27 @@ describe('form and part filters', () => {
   });
 });
 
+describe('defining words', () => {
+  const mk = (name: string, ref: string): NormalizedFood => ({
+    tier: 0,
+    candidate: { name, per100g: { calories: 1, protein: 0, carbs: 0, fat: 0 }, source: 'usda', sourceRef: ref, servings: [] },
+  });
+
+  it('keeps a requested word like "skim" ahead of extra label words', () => {
+    // USDA's order for "milk, skim, fluid" (Nov 2026): sheep milk first.
+    const ranked = rankFoods(
+      'milk, skim, fluid',
+      ['Milk, sheep, fluid', 'Milk, buttermilk, fluid, whole', 'Milk, fluid, nonfat, calcium fortified (fat free or skim)'].map((n, i) => mk(n, `r${i}`)),
+      1,
+    );
+    expect(ranked[0].name).toBe('Milk, fluid, nonfat, calcium fortified (fat free or skim)');
+  });
+
+  it('treats skim and nonfat as the same milk', () => {
+    expect(isRelevantMatch('skim milk', 'Milk, nonfat, fluid, with added vitamin A and vitamin D')).toBe(true);
+  });
+});
+
 describe('searchTermsFor', () => {
   it('falls back from a detailed name to simpler terms', () => {
     expect(searchTermsFor('milk, skim (nonfat), fluid')).toEqual(['milk, skim (nonfat), fluid', 'milk, skim, fluid', 'milk, skim']);

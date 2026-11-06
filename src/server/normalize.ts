@@ -215,8 +215,21 @@ function singular(t: string): string {
   return t;
 }
 
+/** Words USDA and people use interchangeably for the same food. */
+const SYNONYMS: Record<string, string[]> = {
+  skim: ['nonfat'],
+  nonfat: ['skim'],
+  oatmeal: ['oats', 'oat'],
+  porridge: ['oats', 'oat'],
+};
+
 function tokenMatches(queryToken: string, nameToken: string): boolean {
-  return nameToken === queryToken || nameToken.startsWith(queryToken) || singular(nameToken) === singular(queryToken);
+  return (
+    nameToken === queryToken ||
+    nameToken.startsWith(queryToken) ||
+    singular(nameToken) === singular(queryToken) ||
+    (SYNONYMS[queryToken]?.includes(nameToken) ?? false)
+  );
 }
 
 /**
@@ -300,7 +313,9 @@ export function nameSimilarity(query: string, name: string): number {
   if (covered === 0) return 0;
 
   const extras = nt.filter((x) => !isGeneric(x) && !CATEGORY.has(x) && !/^\d+$/.test(x) && !qt.some((t) => tokenMatches(t, x)));
-  const variantPenalty = Math.min(0.4, extras.length * 0.08);
+  // A missing requested word ("skim") costs more than extra label words ("calcium fortified"):
+  // coverage weighs 1.0 below, each unrequested word only 0.05 (capped).
+  const variantPenalty = Math.min(0.25, extras.length * 0.05);
   const queryCooked = qt.some((t) => COOKED_WORDS.has(t));
   const queryRaw = qt.includes('raw');
   const nameRaw = nt.includes('raw');
@@ -309,7 +324,7 @@ export function nameSimilarity(query: string, name: string): number {
   // Unasked-for powder or a lone part of the food is a different calorie density entirely.
   const formPenalty = (isDryForm(nt) && !isDryForm(qt) ? 0.3 : 0) + (isPartOnly(nt) && !isPartOnly(qt) ? 0.3 : 0);
   const prefixBonus = n.startsWith(q) ? 0.1 : 0;
-  return Math.max(0.01, Math.min(0.99, covered * 0.75 + 0.2 + prefixBonus - variantPenalty - statePenalty - formPenalty));
+  return Math.max(0.01, Math.min(0.99, (covered * 1.0 + 0.2 + prefixBonus - variantPenalty - statePenalty - formPenalty) / 1.3));
 }
 
 /**
