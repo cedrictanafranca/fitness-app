@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Icon } from '@/components/ui/icons';
 import { Radius, Spacing } from '@/constants/theme';
-import { Icon } from '@/features/log/components/ui';
 import { useTheme } from '@/hooks/use-theme';
 import { useSpeechToText } from '@/services/speech';
 
@@ -15,7 +15,7 @@ interface ComposerProps {
   onSend: (text: string) => void;
 }
 
-/** Text input with mic (dev build only) and send button. */
+/** Outlined pill input with mic (dev build only) and a black send button. */
 export function Composer({ busy, value: text, onChangeText: setText, onSend }: ComposerProps) {
   const theme = useTheme();
   const speech = useSpeechToText();
@@ -53,7 +53,7 @@ export function Composer({ busy, value: text, onChangeText: setText, onSend }: C
           {speech.error}
         </ThemedText>
       ) : null}
-      <View style={[styles.row, { backgroundColor: theme.backgroundElement, borderColor: speech.listening ? '#D14343' : 'transparent' }]}>
+      <View style={[styles.row, { backgroundColor: theme.surface, borderColor: speech.listening ? theme.warning : theme.border }]}>
         <TextInput
           value={text}
           onChangeText={setText}
@@ -71,13 +71,8 @@ export function Composer({ busy, value: text, onChangeText: setText, onSend }: C
             accessibilityRole="button"
             accessibilityLabel={speech.listening ? 'Stop voice input' : 'Start voice input'}
             onPress={toggleMic}
-            style={[styles.round, { backgroundColor: speech.listening ? '#D14343' : theme.backgroundSelected }]}>
-            <Icon
-              name={speech.listening ? 'stop.fill' : 'mic.fill'}
-              fallback={speech.listening ? '■' : 'Mic'}
-              size={16}
-              color={speech.listening ? '#fff' : theme.text}
-            />
+            style={[styles.round, { backgroundColor: speech.listening ? theme.warning : theme.backgroundElement }]}>
+            <Icon name={speech.listening ? 'stop' : 'mic'} size={16} color={speech.listening ? '#fff' : theme.text} />
           </Pressable>
         ) : null}
         <Pressable
@@ -86,8 +81,8 @@ export function Composer({ busy, value: text, onChangeText: setText, onSend }: C
           accessibilityState={{ disabled: !canSend }}
           disabled={!canSend}
           onPress={submit}
-          style={[styles.round, { backgroundColor: theme.primary, opacity: canSend ? 1 : 0.4 }]}>
-          <Icon name="arrow.up" fallback="↑" size={16} color={theme.onPrimary} />
+          style={[styles.round, { backgroundColor: canSend ? theme.primary : theme.primaryDisabled }]}>
+          <Icon name="arrow-up" size={16} strokeWidth={2.4} color={theme.onPrimary} />
         </Pressable>
       </View>
     </View>

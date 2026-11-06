@@ -36,13 +36,13 @@ export function ActionCard({ state, onConfirm, onDismiss, onChoose }: ActionCard
   const { status, prepared, proposal, error, candidateLabels } = state;
   const preview = prepared?.preview;
   const tone =
-    status === 'applied' ? '#2F9E5B' : status === 'failed' ? theme.warning : status === 'dismissed' ? theme.textSecondary : theme.text;
+    status === 'applied' ? theme.success : status === 'failed' ? theme.warning : status === 'dismissed' ? theme.textSecondary : theme.text;
   const busy = status === 'preparing' || status === 'applying';
 
   return (
     <View
       accessibilityLabel={`${STATUS_LABEL[status]}: ${proposal.summary}`}
-      style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: status === 'pending' || status === 'choose' ? theme.text : 'transparent' }]}>
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: status === 'pending' || status === 'choose' ? theme.text : theme.border }]}>
       <View style={styles.header}>
         <ThemedText type="smallBold" style={{ color: tone }}>
           {STATUS_LABEL[status]}

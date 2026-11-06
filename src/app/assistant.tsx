@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui';
+import { HeaderIconButton, screenHeaderOptions } from '@/components/ui/header';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { ASSISTANT_SUGGESTIONS, ActionCard, Composer, MessageBubble, useAssistant } from '@/features/assistant';
 import { useTheme } from '@/hooks/use-theme';
@@ -41,19 +42,12 @@ export default function AssistantScreen() {
     <ThemedView style={styles.flex}>
       <Stack.Screen
         options={{
+          ...screenHeaderOptions(theme),
           title: 'Assistant',
-          headerLeft: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} style={styles.headerButton}>
-              <ThemedText type="smallBold">Close</ThemedText>
-            </Pressable>
-          ),
+          headerLeft: () => <HeaderIconButton icon="back" accessibilityLabel="Close" onPress={close} />,
           headerRight: () =>
             chat.messages.length > 0 ? (
-              <Pressable accessibilityRole="button" accessibilityLabel="New conversation" onPress={chat.reset} hitSlop={8} style={styles.headerButton}>
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  Clear
-                </ThemedText>
-              </Pressable>
+              <HeaderIconButton icon="trash" accessibilityLabel="New conversation" onPress={chat.reset} />
             ) : null,
         }}
       />
@@ -85,7 +79,7 @@ export default function AssistantScreen() {
                       accessibilityRole="button"
                       onPress={() => chat.send(s)}
                       onLongPress={() => setText(s)}
-                      style={({ pressed }) => [styles.chip, { backgroundColor: theme.backgroundElement }, pressed && styles.pressed]}>
+                      style={({ pressed }) => [styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }, pressed && styles.pressed]}>
                       <ThemedText type="small">{s}</ThemedText>
                     </Pressable>
                   ))}
@@ -147,14 +141,13 @@ export default function AssistantScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  headerButton: { paddingHorizontal: Spacing.two },
   content: { alignItems: 'center', padding: Spacing.three, gap: Spacing.three },
   column: { width: '100%', maxWidth: MaxContentWidth, gap: Spacing.two },
   banner: { borderRadius: Radius.md, padding: Spacing.two + Spacing.one, gap: Spacing.one },
   empty: { gap: Spacing.two, paddingVertical: Spacing.four },
   emptyTitle: { fontSize: 22, lineHeight: 28, fontWeight: 700 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two },
-  chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill },
+  chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill, borderWidth: 1.5 },
   pressed: { opacity: 0.6 },
   message: { gap: Spacing.two },
   thinking: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.one },

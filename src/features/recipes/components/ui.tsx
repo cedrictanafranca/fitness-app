@@ -1,8 +1,9 @@
 /**
- * Local UI pieces for the Recipes area. Kept inside the feature so it does not depend on the shared kit.
+ * Local UI pieces for the Recipes area, styled like the reference board: elevated white cards,
+ * black pill buttons, outline chips, outlined inputs and the grey-track segmented control.
  */
 
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -21,6 +22,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Card as BaseCard } from '@/components/ui/card';
+import { Segmented as BaseSegmented } from '@/components/ui/segmented';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -41,12 +44,13 @@ export function Screen({ children, tab = false, footer }: ScreenProps) {
         style={styles.flex}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
         automaticallyAdjustKeyboardInsets
         contentInsetAdjustmentBehavior={tab ? 'never' : 'automatic'}
         contentContainerStyle={[
           styles.screenContent,
           {
-            paddingTop: tab ? insets.top + Spacing.three : Spacing.three,
+            paddingTop: tab ? insets.top + Spacing.two : Spacing.three,
             paddingBottom: (tab ? BottomTabInset : 0) + insets.bottom + Spacing.five,
           },
         ]}>
@@ -60,18 +64,14 @@ export function Screen({ children, tab = false, footer }: ScreenProps) {
 }
 
 export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  return (
-    <ThemedView type="backgroundElement" style={[styles.card, style]}>
-      {children}
-    </ThemedView>
-  );
+  return <BaseCard style={[styles.card, style]}>{children}</BaseCard>;
 }
 
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <View style={styles.sectionHeader}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-        {title.toUpperCase()}
+      <ThemedText style={styles.sectionTitle} accessibilityRole="header">
+        {title}
       </ThemedText>
       {action}
     </View>
@@ -92,15 +92,17 @@ interface ButtonProps {
 
 export function Button({ label, onPress, variant = 'primary', disabled, loading, small, style }: ButtonProps) {
   const theme = useTheme();
+  const inactive = disabled || loading;
   const bg =
     variant === 'primary'
-      ? theme.primary
+      ? inactive
+        ? theme.primaryDisabled
+        : theme.primary
       : variant === 'secondary'
-        ? theme.backgroundElement
+        ? theme.surface
         : 'transparent';
-  const fg =
-    variant === 'primary' ? theme.onPrimary : variant === 'danger' ? theme.warning : theme.text;
-  const inactive = disabled || loading;
+  const fg = variant === 'primary' ? theme.onPrimary : variant === 'danger' ? theme.warning : theme.text;
+  const border = variant === 'secondary' ? theme.border : variant === 'danger' ? theme.warning : 'transparent';
   return (
     <Pressable
       accessibilityRole="button"
@@ -110,9 +112,8 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading,
       style={({ pressed }) => [
         styles.button,
         small && styles.buttonSmall,
-        { backgroundColor: bg },
-        variant === 'danger' && { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: theme.warning },
-        inactive && styles.disabled,
+        { backgroundColor: bg, borderColor: border },
+        inactive && variant !== 'primary' && styles.disabled,
         pressed && styles.pressed,
         style,
       ]}>
@@ -136,7 +137,7 @@ export function Chip({ label, selected, onPress }: { label: string; selected?: b
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
-        { backgroundColor: selected ? theme.primary : theme.backgroundElement },
+        { backgroundColor: selected ? theme.primary : theme.surface, borderColor: selected ? theme.primary : theme.text },
         pressed && styles.pressed,
       ]}>
       <ThemedText type="small" style={{ color: selected ? theme.onPrimary : theme.text }}>
@@ -155,26 +156,7 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (v: T) => void;
 }) {
-  const theme = useTheme();
-  return (
-    <View style={[styles.segmented, { backgroundColor: theme.backgroundElement }]} accessibilityRole="tablist">
-      {options.map((o) => {
-        const selected = o.value === value;
-        return (
-          <Pressable
-            key={o.value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            onPress={() => onChange(o.value)}
-            style={[styles.segment, selected && { backgroundColor: theme.background }]}>
-            <ThemedText type="small" style={selected ? styles.segmentSelected : undefined} themeColor={selected ? 'text' : 'textSecondary'}>
-              {o.label}
-            </ThemedText>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+  return <BaseSegmented options={options} value={value} onChange={onChange} />;
 }
 
 // ---------- Form fields ----------
@@ -195,6 +177,7 @@ interface FieldProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/** Outlined input with the label inside on the left (single line) or above it (multiline). */
 export function Field({
   label,
   value,
@@ -211,15 +194,26 @@ export function Field({
   style,
 }: FieldProps) {
   const theme = useTheme();
+  const [focused, setFocused] = useState(false);
+  const border = { borderColor: focused ? theme.text : theme.border, borderWidth: focused ? 1.5 : 1 };
   return (
     <View style={[styles.field, style]}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <View style={[styles.inputWrap, { backgroundColor: theme.backgroundElement }, multiline && styles.inputWrapMulti]}>
+      {multiline ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {label}
+        </ThemedText>
+      ) : null}
+      <View style={[styles.inputWrap, { backgroundColor: theme.surface }, border, multiline && styles.inputWrapMulti]}>
+        {!multiline ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.inlineLabel} numberOfLines={1}>
+            {label}
+          </ThemedText>
+        ) : null}
         <TextInput
           value={value}
           onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={placeholder}
           placeholderTextColor={theme.textSecondary}
           keyboardType={keyboardType}
@@ -229,7 +223,7 @@ export function Field({
           onSubmitEditing={onSubmitEditing}
           returnKeyType={returnKeyType}
           accessibilityLabel={label}
-          style={[styles.input, { color: theme.text }, multiline && styles.inputMulti]}
+          style={[styles.input, { color: theme.text }, multiline ? styles.inputMulti : styles.inputInline]}
         />
         {suffix ? (
           <ThemedText type="small" themeColor="textSecondary">
@@ -291,7 +285,7 @@ export function Badge({ label, tone = 'neutral' }: { label: string; tone?: 'neut
   const theme = useTheme();
   const estimate = tone === 'estimate';
   return (
-    <View style={[styles.badge, { backgroundColor: estimate ? theme.carbs + '33' : theme.backgroundSelected }]}>
+    <View style={[styles.badge, { backgroundColor: estimate ? theme.carbs + '33' : theme.backgroundElement }]}>
       <ThemedText type="small" style={styles.badgeText}>
         {estimate ? '≈ ' : ''}
         {label}
@@ -313,9 +307,7 @@ export function EmptyState({
 }) {
   return (
     <View style={styles.empty}>
-      <ThemedText type="subtitle" style={styles.emptyTitle}>
-        {title}
-      </ThemedText>
+      <ThemedText style={styles.emptyTitle}>{title}</ThemedText>
       <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
         {body}
       </ThemedText>
@@ -391,9 +383,12 @@ export function MacroSummary({
   const theme = useTheme();
   const cell = (label: string, value: number, color: string) => (
     <View style={styles.macroCell}>
-      <ThemedText type="smallBold" style={{ color }}>
-        {label}
-      </ThemedText>
+      <View style={styles.macroHead}>
+        <View style={[styles.macroDot, { backgroundColor: color }]} />
+        <ThemedText type="small" themeColor="textSecondary">
+          {label}
+        </ThemedText>
+      </View>
       <ThemedText type="default" style={styles.macroValue}>
         {Math.round(value * 10) / 10} g
       </ThemedText>
@@ -406,11 +401,11 @@ export function MacroSummary({
           {caption}
         </ThemedText>
       ) : null}
-      <ThemedText style={[styles.calories, { color: theme.calories }]}>
+      <ThemedText style={[styles.calories, { color: theme.text }]}>
         {Math.round(calories)}
         <ThemedText type="small" themeColor="textSecondary">
           {' '}
-          kcal
+          cal
         </ThemedText>
       </ThemedText>
       <View style={styles.macroRow}>
@@ -445,49 +440,45 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  card: { borderRadius: Radius.md, padding: Spacing.three, gap: Spacing.two },
+  card: { gap: Spacing.two },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: Spacing.two,
   },
-  sectionTitle: { letterSpacing: 0.6 },
+  sectionTitle: { fontSize: 20, lineHeight: 26, fontWeight: 700 },
   button: {
-    minHeight: 50,
+    minHeight: 56,
     borderRadius: Radius.pill,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,
   },
-  buttonSmall: { minHeight: 36, paddingHorizontal: Spacing.three },
+  buttonSmall: { minHeight: 38, paddingHorizontal: Spacing.three },
   buttonLabel: { fontWeight: 600 },
-  disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.7 },
+  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.75 },
   chip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three + Spacing.one,
+    paddingVertical: Spacing.two + Spacing.half,
     borderRadius: Radius.pill,
+    borderWidth: 1.5,
   },
-  segmented: { flexDirection: 'row', borderRadius: Radius.md, padding: 3 },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.md - 3,
-  },
-  segmentSelected: { fontWeight: 700 },
   field: { gap: Spacing.one },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
-    minHeight: 48,
+    minHeight: 58,
     gap: Spacing.two,
   },
   inputWrapMulti: { alignItems: 'flex-start', paddingVertical: Spacing.two },
+  inlineLabel: { fontSize: 15, flexShrink: 1, maxWidth: '45%' },
   input: { flex: 1, fontSize: 16, paddingVertical: Spacing.two },
+  inputInline: { textAlign: 'right' },
   inputMulti: { minHeight: 96, textAlignVertical: 'top' },
   hint: { marginTop: 2 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
@@ -500,7 +491,7 @@ const styles = StyleSheet.create({
   badge: { borderRadius: Radius.pill, paddingHorizontal: Spacing.two, paddingVertical: 2 },
   badgeText: { fontSize: 12, lineHeight: 16 },
   empty: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.five, paddingHorizontal: Spacing.three },
-  emptyTitle: { fontSize: 22, lineHeight: 28, textAlign: 'center' },
+  emptyTitle: { fontSize: 22, lineHeight: 28, fontWeight: 700, textAlign: 'center' },
   emptyBody: { textAlign: 'center' },
   emptyAction: { marginTop: Spacing.two, alignSelf: 'stretch' },
   sheetHeader: {
@@ -512,8 +503,10 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { fontSize: 22, lineHeight: 28 },
   sheetContent: { paddingHorizontal: Spacing.three, gap: Spacing.three, paddingTop: Spacing.two },
-  calories: { fontSize: 40, lineHeight: 46, fontWeight: 700 },
+  calories: { fontSize: 40, lineHeight: 46, fontWeight: 700, letterSpacing: -0.5 },
   macroRow: { flexDirection: 'row', marginTop: Spacing.two },
   macroCell: { flex: 1, gap: 2 },
+  macroHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  macroDot: { width: 8, height: 8, borderRadius: 4 },
   macroValue: { fontWeight: 600 },
 });

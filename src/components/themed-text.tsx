@@ -27,18 +27,21 @@ const styles = StyleSheet.create({
   },
   default: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 22,
     fontWeight: 500,
   },
+  /** Screen titles ("Progress", "Profile", "Log Exercise"). */
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontSize: 34,
+    fontWeight: 700,
+    lineHeight: 40,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: 700,
+    letterSpacing: -0.2,
   },
   link: {
     lineHeight: 30,

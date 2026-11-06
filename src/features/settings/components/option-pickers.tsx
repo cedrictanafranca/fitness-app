@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Segmented } from '@/components/ui/segmented';
+import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type Option<T extends string> = { value: T; label: string };
 
-/** Two-to-three way toggle rendered as a single pill row (used for units). */
+/** Two-to-three way toggle rendered as the shared pill segmented control (used for units). */
 export function SegmentedControl<T extends string>({
   options,
   value,
@@ -14,29 +16,10 @@ export function SegmentedControl<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
-  const theme = useTheme();
-  return (
-    <View style={[styles.segmentTrack, { backgroundColor: theme.backgroundSelected }]}>
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <Pressable
-            key={option.value}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            onPress={() => onChange(option.value)}
-            style={[styles.segment, selected && { backgroundColor: theme.background }]}>
-            <Text style={[styles.segmentLabel, { color: theme.text, fontWeight: selected ? '700' : '500' }]}>
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+  return <Segmented options={options} value={value} onChange={onChange} />;
 }
 
-/** Wrapping pill chips for a small set of choices with longer labels (used for goal). */
+/** Wrapping outline chips, black when selected (used for goal). */
 export function OptionChips<T extends string>({
   options,
   value,
@@ -59,12 +42,10 @@ export function OptionChips<T extends string>({
             onPress={() => onChange(option.value)}
             style={[
               styles.chip,
-              { borderColor: theme.backgroundSelected },
-              selected && { backgroundColor: theme.text, borderColor: theme.text },
+              { borderColor: theme.border, backgroundColor: theme.surface },
+              selected && { backgroundColor: theme.primary, borderColor: theme.primary },
             ]}>
-            <Text style={[styles.chipLabel, { color: selected ? theme.background : theme.text }]}>
-              {option.label}
-            </Text>
+            <Text style={[styles.chipLabel, { color: selected ? theme.onPrimary : theme.text }]}>{option.label}</Text>
           </Pressable>
         );
       })}
@@ -73,33 +54,7 @@ export function OptionChips<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  segmentTrack: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-  },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  segmentLabel: {
-    fontSize: 15,
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-  },
-  chipLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: Radius.pill, borderWidth: 1.5 },
+  chipLabel: { fontSize: 14, fontWeight: 600 },
 });

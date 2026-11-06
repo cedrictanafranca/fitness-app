@@ -1,4 +1,3 @@
-import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,11 +8,7 @@ import { Button, EstimateBadge } from '@/components/ui';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { toDateKey } from '@/core/nutrition/engine';
 import { CalorieHero, DayHeader, MacroRow, MealList, useDailySummary } from '@/features/home';
-import { QuickActions } from '@/features/home/quick-actions';
 import { useLoggingStreak } from '@/features/home/use-logging-streak';
-
-/** Cast because typed-route definitions regenerate when the dev server runs. */
-const ASSISTANT_HREF = '/assistant' as unknown as Href;
 
 export default function HomeScreen() {
   const today = toDateKey(new Date());
@@ -29,13 +24,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}>
           <View style={styles.column}>
-            <DayHeader
-              date={date}
-              today={today}
-              onChange={setDate}
-              onAssistant={() => router.push(ASSISTANT_HREF)}
-              streak={streak}
-            />
+            <DayHeader date={date} today={today} onChange={setDate} streak={streak} />
 
             {loading ? (
               <View style={styles.center} accessibilityLabel="Loading">
@@ -65,7 +54,6 @@ export default function HomeScreen() {
             )}
           </View>
         </ScrollView>
-        <QuickActions />
       </SafeAreaView>
     </ThemedView>
   );
@@ -77,8 +65,8 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.six + Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: BottomTabInset + Spacing.four,
   },
   column: { width: '100%', maxWidth: MaxContentWidth, gap: Spacing.three },
   center: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.six },

@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius } from '@/constants/theme';
+import { Icon, type IconName } from '@/components/ui/icons';
+import { Segmented } from '@/components/ui/segmented';
+import { Radius, Spacing } from '@/constants/theme';
 import { weightChanges, weightTrend } from '@/core/progress/stats';
 import type { DateKey, Units, WeightRecord } from '@/core/types';
 import { kgToUnits, round1, weightUnitLabel } from '@/features/settings/units';
@@ -12,73 +14,106 @@ import { useTheme } from '@/hooks/use-theme';
 import { parseDateKey } from '../dates';
 import { Card } from './card';
 
-const RANGES: { label: string; days: number | null }[] = [
-  { label: '30D', days: 30 },
-  { label: '90D', days: 90 },
-  { label: '1Y', days: 365 },
-  { label: 'All', days: null },
+type RangeKey = '90D' | '6M' | '1Y' | 'ALL';
+const RANGES: { value: RangeKey; label: string; days: number | null }[] = [
+  { value: '90D', label: '90D', days: 90 },
+  { value: '6M', label: '6M', days: 182 },
+  { value: '1Y', label: '1Y', days: 365 },
+  { value: 'ALL', label: 'ALL', days: null },
 ];
+const CHANGE_WINDOWS = [7, 14, 30, 90];
 
-const HEIGHT = 150;
-const PAD = { top: 10, right: 12, bottom: 22, left: 36 };
+const HEIGHT = 190;
+const PAD = { top: 12, right: 12, bottom: 8, left: 36 };
 
-/** Weight over time with a range picker, plus the change over 7 / 30 / 90 days. */
+/** "Weight Progress" line chart with a range picker, then the "Weight Changes" table. */
 export function WeightTrendCard({ history, today, units }: { history: WeightRecord[]; today: DateKey; units: Units }) {
   const theme = useTheme();
-  const [range, setRange] = useState(1);
+  const [range, setRange] = useState<RangeKey>('90D');
   const [width, setWidth] = useState(0);
-  const points = weightTrend(history, today, RANGES[range].days);
-  const changes = weightChanges(history, today);
+  const days = RANGES.find((r) => r.value === range)?.days ?? null;
+  const points = weightTrend(history, today, days);
+  const changes = weightChanges(history, today, CHANGE_WINDOWS);
   const unit = weightUnitLabel(units);
+
+  const oldest = history[history.length - 1];
+  const newest = history[0];
+  const allTime = oldest && newest && oldest.id !== newest.id ? newest.weightKg - oldest.weightKg : null;
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
   return (
-    <Card title="Weight progress" caption={points.length ? `${points.length} ${points.length === 1 ? 'entry' : 'entries'}` : undefined}>
-      <View onLayout={onLayout} style={styles.chartWrap}>
-        {width > 0 && points.length >= 2 ? (
-          <Chart points={points} width={width} units={units} color={theme.text} muted={theme.textSecondary} grid={theme.backgroundSelected} />
-        ) : (
-          <View style={[styles.empty, { height: HEIGHT }]}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {points.length === 1 ? 'Log one more weigh-in to see a trend.' : 'No weigh-ins in this range yet.'}
+    <>
+      <Card
+        title="Weight Progress"
+        trailing={
+          <View style={[styles.pill, { backgroundColor: theme.backgroundElement }]}>
+            <Icon name="target" size={13} color={theme.text} />
+            <ThemedText type="small">
+              <ThemedText type="smallBold">{points.length}</ThemedText>
+              {points.length === 1 ? ' entry' : ' entries'}
             </ThemedText>
           </View>
-        )}
-      </View>
-
-      <View style={[styles.ranges, { backgroundColor: theme.background }]}>
-        {RANGES.map((r, i) => (
-          <Pressable
-            key={r.label}
-            accessibilityRole="button"
-            accessibilityState={{ selected: i === range }}
-            onPress={() => setRange(i)}
-            style={[styles.range, i === range && { backgroundColor: theme.backgroundElement }]}>
-            <Text style={[styles.rangeLabel, { color: i === range ? theme.text : theme.textSecondary }]}>{r.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={styles.table}>
-        {changes.map((c) => {
-          const delta = c.deltaKg == null ? null : round1(kgToUnits(c.deltaKg, units));
-          const dir = delta == null ? '' : delta > 0 ? 'Gain' : delta < 0 ? 'Loss' : 'No change';
-          const color = delta == null || delta === 0 ? theme.textSecondary : delta < 0 ? theme.protein : theme.fat;
-          return (
-            <View key={c.days} style={styles.tableRow}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.tableLabel}>
-                {`${c.days} day`}
+        }>
+        <View onLayout={onLayout} style={styles.chartWrap}>
+          {width > 0 && points.length >= 2 ? (
+            <Chart points={points} width={width} units={units} color={theme.text} muted={theme.textSecondary} grid={theme.border} />
+          ) : (
+            <View style={[styles.empty, { height: HEIGHT }]}>
+              <ThemedText type="small" themeColor="textSecondary">
+                {points.length === 1 ? 'Log one more weigh-in to see a trend.' : 'No weigh-ins in this range yet.'}
               </ThemedText>
-              <Text style={[styles.tableValue, { color: theme.text }]}>
-                {delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)} ${unit}`}
-              </Text>
-              <Text style={[styles.tableDir, { color }]}>{delta == null ? 'Not enough data' : dir}</Text>
             </View>
-          );
-        })}
-      </View>
-    </Card>
+          )}
+        </View>
+        <Segmented options={RANGES} value={range} onChange={setRange} />
+      </Card>
+
+      <Card title="Weight Changes">
+        <View style={styles.table}>
+          {[...changes, { days: 0, deltaKg: allTime }].map((c) => {
+            const delta = c.deltaKg == null ? null : round1(kgToUnits(c.deltaKg, units));
+            const dir: { label: string; icon: IconName; color: string } =
+              delta == null
+                ? { label: 'No data yet', icon: 'arrow-right', color: theme.textSecondary }
+                : delta > 0
+                  ? { label: 'Increase', icon: 'arrow-up-right', color: theme.carbs }
+                  : delta < 0
+                    ? { label: 'Decrease', icon: 'arrow-down-right', color: theme.carbs }
+                    : { label: 'No change', icon: 'arrow-right', color: theme.fat };
+            return (
+              <View key={c.days} style={styles.tableRow}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.tableLabel}>
+                  {c.days === 0 ? 'All time' : `${c.days} day`}
+                </ThemedText>
+                <Sparkline delta={delta} color={delta == null || delta === 0 ? theme.fat : theme.carbs} />
+                <Text style={[styles.tableValue, { color: theme.text }]} numberOfLines={1}>
+                  {delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)} ${unit}`}
+                </Text>
+                <View style={styles.dir}>
+                  <Icon name={dir.icon} size={14} strokeWidth={2.2} color={dir.color} />
+                  <Text style={[styles.tableDir, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {dir.label}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </Card>
+    </>
+  );
+}
+
+/** Tiny curve glyph next to each change row: rising, falling, or flat. */
+function Sparkline({ delta, color }: { delta: number | null; color: string }) {
+  const d = delta == null || delta === 0 ? 'M2 9 H26' : delta > 0 ? 'M2 16 C 10 16, 18 3, 26 3' : 'M2 3 C 10 3, 18 16, 26 16';
+  const fill = delta == null || delta === 0 ? `M2 9 H26 V18 H2 Z` : `${d} V18 H2 Z`;
+  return (
+    <Svg width={28} height={18} viewBox="0 0 28 18">
+      <Path d={fill} fill={color} opacity={0.18} />
+      <Path d={d} stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />
+    </Svg>
   );
 }
 
@@ -102,41 +137,33 @@ function Chart({
   const minT = times[0];
   const maxT = times[times.length - 1];
   const span = Math.max(1, maxT - minT);
-  let lo = Math.min(...values);
-  let hi = Math.max(...values);
-  if (hi - lo < 2) {
-    const mid = (hi + lo) / 2;
-    lo = mid - 1;
-    hi = mid + 1;
+  let lo = Math.floor(Math.min(...values)) - 2;
+  let hi = Math.ceil(Math.max(...values)) + 2;
+  if (hi - lo < 8) {
+    const mid = Math.round((hi + lo) / 2);
+    lo = mid - 4;
+    hi = mid + 4;
   }
   const w = width - PAD.left - PAD.right;
   const h = HEIGHT - PAD.top - PAD.bottom;
   const x = (t: number) => PAD.left + ((t - minT) / span) * w;
   const y = (v: number) => PAD.top + (1 - (v - lo) / (hi - lo)) * h;
   const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(times[i]).toFixed(1)},${y(values[i]).toFixed(1)}`).join(' ');
-  const ticks = [hi, (hi + lo) / 2, lo];
-  const first = parseDateKey(points[0].date);
-  const last = parseDateKey(points[points.length - 1].date);
-  const fmt = (dt: Date) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const step = (hi - lo) / 5;
+  const ticks = Array.from({ length: 6 }, (_, i) => lo + step * i);
 
   return (
     <Svg width={width} height={HEIGHT} accessibilityLabel="Weight trend chart">
       {ticks.map((t) => (
-        <Line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={grid} strokeDasharray="3 4" />
+        <Line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={grid} strokeWidth={1} />
       ))}
       {ticks.map((t) => (
-        <SvgText key={`l${t}`} x={PAD.left - 6} y={y(t) + 4} fontSize={10} fill={muted} textAnchor="end">
+        <SvgText key={`l${t}`} x={PAD.left - 8} y={y(t) + 4} fontSize={11} fill={muted} textAnchor="end">
           {round1(t).toFixed(0)}
         </SvgText>
       ))}
       <Path d={d} stroke={color} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
       <Circle cx={x(times[times.length - 1])} cy={y(values[values.length - 1])} r={4} fill={color} />
-      <SvgText x={PAD.left} y={HEIGHT - 6} fontSize={10} fill={muted}>
-        {fmt(first)}
-      </SvgText>
-      <SvgText x={width - PAD.right} y={HEIGHT - 6} fontSize={10} fill={muted} textAnchor="end">
-        {fmt(last)}
-      </SvgText>
     </Svg>
   );
 }
@@ -144,12 +171,18 @@ function Chart({
 const styles = StyleSheet.create({
   chartWrap: { width: '100%' },
   empty: { alignItems: 'center', justifyContent: 'center' },
-  ranges: { flexDirection: 'row', borderRadius: Radius.pill, padding: 3 },
-  range: { flex: 1, paddingVertical: 7, borderRadius: Radius.pill, alignItems: 'center' },
-  rangeLabel: { fontSize: 13, fontWeight: '600' },
-  table: { gap: 8 },
-  tableRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  tableLabel: { width: 56 },
-  tableValue: { flex: 1, fontSize: 15, fontWeight: '600' },
-  tableDir: { fontSize: 13, fontWeight: '600' },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.two + Spacing.one,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.pill,
+  },
+  table: { gap: Spacing.three },
+  tableRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + Spacing.half },
+  tableLabel: { width: 54, fontSize: 15 },
+  tableValue: { flex: 1, fontSize: 15, fontWeight: 600, textAlign: 'right' },
+  dir: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, width: 104 },
+  tableDir: { fontSize: 13, fontWeight: 500, flexShrink: 1 },
 });

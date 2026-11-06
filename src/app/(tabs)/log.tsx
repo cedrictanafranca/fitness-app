@@ -6,11 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { HeaderIconButton } from '@/components/ui/header';
+import { Icon } from '@/components/ui/icons';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { MealTypeChips } from '@/features/log/components/MealTypeChips';
 import { RecentMealsSheet } from '@/features/log/components/RecentMealsSheet';
 import { Sheet, SheetRow } from '@/features/log/components/Sheet';
-import { Button, Icon, Notice, SectionLabel, TextField } from '@/features/log/components/ui';
+import { Button, Notice, TextField } from '@/features/log/components/ui';
 import { analyzeComposer } from '@/features/log/analyze';
 import { parseGrams, updateComposer, useComposer } from '@/features/log/composer-store';
 import { resetDraft, startDraftFromMeal } from '@/features/log/draft-store';
@@ -106,6 +108,8 @@ export default function LogScreen() {
     goCapture();
   };
 
+  const goHome = () => router.navigate('/' as Href);
+
   const weight = parseGrams(c.gramsText);
 
   return (
@@ -116,117 +120,131 @@ export default function LogScreen() {
           keyboardDismissMode="interactive"
           contentContainerStyle={[
             styles.content,
-            { paddingTop: insets.top + Spacing.three, paddingBottom: BottomTabInset + insets.bottom + Spacing.five },
+            { paddingTop: insets.top + Spacing.two, paddingBottom: BottomTabInset + insets.bottom + Spacing.four },
           ]}>
-          <ThemedText type="subtitle">Log a meal</ThemedText>
+          <View style={styles.column}>
+            <View style={styles.header}>
+              <HeaderIconButton icon="back" accessibilityLabel="Back to Home" onPress={goHome} />
+              <ThemedText style={styles.headerTitle} accessibilityRole="header">
+                Log Food
+              </ThemedText>
+              <View style={styles.headerSpacer} />
+            </View>
+            <ThemedText type="title">Describe it</ThemedText>
 
-          <View style={styles.composer}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={c.photo ? 'Change meal photo' : 'Add meal photo'}
-              onPress={() => setPhotoSheet(true)}
-              style={[styles.photo, { backgroundColor: theme.backgroundElement }]}>
-              {c.photo ? (
-                <Image source={{ uri: c.photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : (
-                <View style={styles.photoEmpty}>
-                  <Icon name="camera.fill" fallback="+" size={24} color={theme.textSecondary} />
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Photo
-                  </ThemedText>
-                </View>
-              )}
-            </Pressable>
+            <View style={styles.composer}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={c.photo ? 'Change meal photo' : 'Add meal photo'}
+                onPress={() => setPhotoSheet(true)}
+                style={[styles.photo, { backgroundColor: theme.backgroundElement }]}>
+                {c.photo ? (
+                  <Image source={{ uri: c.photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                ) : (
+                  <View style={styles.photoEmpty}>
+                    <Icon name="camera" size={26} color={theme.text} />
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Photo
+                    </ThemedText>
+                  </View>
+                )}
+              </Pressable>
 
-            <View style={styles.textWrap}>
               <TextField
                 value={c.text}
                 onChangeText={(text) => updateComposer({ text })}
                 placeholder="Describe what you ate…"
                 multiline
                 textAlignVertical="top"
-                style={[
-                  styles.text,
-                  speech.listening ? { borderWidth: 1.5, borderColor: '#D14343' } : null,
-                ]}
+                style={styles.text}
+                containerStyle={[styles.textBox, speech.listening ? { borderColor: theme.warning, borderWidth: 1.5 } : null]}
                 accessibilityLabel="Meal description"
+                trailing={
+                  speech.available ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={speech.listening ? 'Stop voice input' : 'Start voice input'}
+                      onPress={toggleMic}
+                      style={[styles.mic, { backgroundColor: speech.listening ? theme.warning : theme.backgroundElement }]}>
+                      <Icon name={speech.listening ? 'stop' : 'mic'} size={18} color={speech.listening ? '#fff' : theme.text} />
+                    </Pressable>
+                  ) : undefined
+                }
               />
-              {speech.available ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={speech.listening ? 'Stop voice input' : 'Start voice input'}
-                  onPress={toggleMic}
-                  style={[
-                    styles.mic,
-                    { backgroundColor: speech.listening ? '#D14343' : theme.backgroundSelected },
-                  ]}>
-                  <Icon
-                    name={speech.listening ? 'stop.fill' : 'mic.fill'}
-                    fallback={speech.listening ? '■' : 'Mic'}
-                    size={18}
-                    color={speech.listening ? '#fff' : theme.text}
-                  />
-                </Pressable>
-              ) : null}
             </View>
-          </View>
 
-          {speech.listening ? (
+            {speech.listening ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                Listening… tap the mic to stop.
+              </ThemedText>
+            ) : null}
+            {speech.error ? <Notice tone="warn">{speech.error}</Notice> : null}
+            {photoError ? <Notice tone="warn">{photoError}</Notice> : null}
+
+            <TextField
+              value={c.gramsText}
+              onChangeText={(gramsText) => updateComposer({ gramsText })}
+              keyboardType="decimal-pad"
+              placeholder="Optional"
+              accessibilityLabel="Measured weight in grams"
+              style={styles.gramsInput}
+              leading={
+                <ThemedText type="small" themeColor="textSecondary" style={styles.gramsLabel}>
+                  Plate weight
+                </ThemedText>
+              }
+              trailing={
+                <ThemedText type="small" themeColor="textSecondary">
+                  (g)
+                </ThemedText>
+              }
+            />
             <ThemedText type="small" themeColor="textSecondary">
-              Listening… tap the mic to stop.
+              {weight != null
+                ? `Treated as the whole plate (${weight} g) unless an item states its own weight.`
+                : 'Weighed your plate? This is the whole plate unless items specify their own weight.'}
             </ThemedText>
-          ) : null}
-          {speech.error ? <Notice tone="warn">{speech.error}</Notice> : null}
-          {photoError ? <Notice tone="warn">{photoError}</Notice> : null}
 
-          <SectionLabel>Measured weight (g)</SectionLabel>
-          <TextField
-            value={c.gramsText}
-            onChangeText={(gramsText) => updateComposer({ gramsText })}
-            keyboardType="decimal-pad"
-            placeholder="Optional"
-            accessibilityLabel="Measured weight in grams"
-          />
-          <ThemedText type="small" themeColor="textSecondary">
-            {weight != null
-              ? `Treated as the whole plate (${weight} g) unless an item states its own weight.`
-              : 'Weigh your plate? This is the whole plate unless items specify their own weight.'}
-          </ThemedText>
+            <MealTypeChips value={c.mealType} onChange={(mealType) => updateComposer({ mealType, mealTypeTouched: true })} />
 
-          <SectionLabel>Meal</SectionLabel>
-          <MealTypeChips
-            value={c.mealType}
-            onChange={(mealType) => updateComposer({ mealType, mealTypeTouched: true })}
-          />
+            <Button label={busy ? 'Analyzing…' : 'Analyze'} onPress={analyze} disabled={!canAnalyze} loading={busy} style={styles.analyze} />
 
-          <Button
-            label={busy ? 'Analyzing…' : 'Analyze'}
-            onPress={analyze}
-            disabled={!canAnalyze}
-            loading={busy}
-            style={styles.analyze}
-          />
+            {error ? (
+              <Notice tone="bad" title="Couldn't analyze this meal" actionLabel="Add manually" onAction={addManually}>
+                {error}
+              </Notice>
+            ) : null}
 
-          {error ? (
-            <Notice tone="bad" title="Couldn't analyze this meal" actionLabel="Add manually" onAction={addManually}>
-              {error}
-            </Notice>
-          ) : null}
-
-          <View style={styles.secondary}>
-            <Button label="Search food" variant="secondary" onPress={searchFood} />
-            <Button label="Repeat a recent meal" variant="secondary" onPress={() => setRecentSheet(true)} />
-            <Button label="Ask the assistant" variant="secondary" onPress={() => router.push(ASSISTANT_HREF)} />
+            <View style={styles.secondary}>
+              <Button
+                label="Food Database"
+                variant="secondary"
+                onPress={searchFood}
+                leading={<Icon name="search" size={18} color={theme.text} />}
+              />
+              <Button
+                label="Repeat a recent meal"
+                variant="secondary"
+                onPress={() => setRecentSheet(true)}
+                leading={<Icon name="timer" size={18} color={theme.text} />}
+              />
+              <Button
+                label="Ask the assistant"
+                variant="secondary"
+                onPress={() => router.push(ASSISTANT_HREF)}
+                leading={<Icon name="sparkles" size={18} color={theme.text} />}
+              />
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Sheet visible={photoSheet} onClose={() => setPhotoSheet(false)} title="Meal photo">
-        <SheetRow title="Take photo" onPress={takePhoto} />
-        <SheetRow title="Choose from library" onPress={choosePhoto} />
+      <Sheet visible={photoSheet} onClose={() => setPhotoSheet(false)} title="Add Meal Photo">
+        <SheetRow title="Take Photo" onPress={takePhoto} />
+        <SheetRow title="Upload Photo" onPress={choosePhoto} />
         {c.photo ? (
           <SheetRow
-            title="Remove photo"
+            title="Remove Photo"
             destructive
             onPress={() => {
               updateComposer({ photo: null });
@@ -243,22 +261,19 @@ export default function LogScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: Spacing.three, gap: Spacing.two },
+  content: { paddingHorizontal: Spacing.three, alignItems: 'center' },
+  column: { width: '100%', maxWidth: MaxContentWidth, gap: Spacing.two + Spacing.one },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.two },
+  headerTitle: { fontSize: 17, lineHeight: 22, fontWeight: 600 },
+  headerSpacer: { width: 40 },
   composer: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.two },
-  photo: { width: 104, height: 104, borderRadius: 16, overflow: 'hidden' },
+  photo: { width: 112, height: 112, borderRadius: Radius.md, overflow: 'hidden' },
   photoEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.one },
-  textWrap: { flex: 1 },
-  text: { minHeight: 104, paddingTop: Spacing.two, paddingRight: 52 },
-  mic: {
-    position: 'absolute',
-    right: Spacing.two,
-    bottom: Spacing.two,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  analyze: { marginTop: Spacing.three },
-  secondary: { gap: Spacing.two, marginTop: Spacing.three },
+  textBox: { flex: 1, alignItems: 'flex-start', paddingVertical: Spacing.two },
+  text: { minHeight: 96, paddingTop: Spacing.one },
+  mic: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
+  gramsLabel: { fontSize: 15, minWidth: 100 },
+  gramsInput: { textAlign: 'right' },
+  analyze: { marginTop: Spacing.two },
+  secondary: { gap: Spacing.two, marginTop: Spacing.two },
 });

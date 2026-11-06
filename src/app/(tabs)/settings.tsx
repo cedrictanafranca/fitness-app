@@ -35,18 +35,14 @@ export default function SettingsScreen() {
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag">
         <View style={styles.column}>
-          <ThemedText type="title" style={styles.heading}>
-            Settings
+          <ThemedText type="title" style={styles.heading} accessibilityRole="header">
+            Profile
           </ThemedText>
-          <ProfileSection
-            draft={draft}
-            errors={errors}
-            onField={form.setField}
-            onUnits={form.setUnits}
-          />
+          <ProfileSection draft={draft} errors={errors} onField={form.setField} onUnits={form.setUnits} />
           <TargetsSection draft={draft} errors={errors} onField={form.setField} />
           <ActivitySection draft={draft} onField={form.setField} />
           <DataSection />
@@ -71,37 +67,17 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
+  screen: { flex: 1 },
+  scroll: { flex: 1 },
   content: {
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: Spacing.three,
+    paddingBottom: Spacing.four,
     alignItems: 'center',
   },
-  column: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.three,
-  },
-  heading: {
-    marginBottom: Spacing.one,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: BottomTabInset,
-  },
-  footer: {
-    alignItems: 'center',
-  },
-  footerInner: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-  },
+  column: { width: '100%', maxWidth: MaxContentWidth, gap: Spacing.four },
+  heading: { marginBottom: -Spacing.two },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: BottomTabInset },
+  footer: { alignItems: 'center' },
+  footerInner: { width: '100%', maxWidth: MaxContentWidth },
 });

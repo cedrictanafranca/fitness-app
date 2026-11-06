@@ -1,17 +1,16 @@
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Radius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { per100gFromTotals } from '@/core/nutrition/engine';
 import { foodsRepo } from '@/data/repos';
-import { Button, Chip, Notice, SectionLabel, TextField } from '@/features/log/components/ui';
+import { Button, Chip, Notice, TextField } from '@/features/log/components/ui';
 import { createdFoodStore } from '@/features/log/created-food-store';
 import { errorMessage } from '@/features/log/format';
-import { useTheme } from '@/hooks/use-theme';
 
 function num(text: string): number | undefined {
   const t = text.trim();
@@ -22,38 +21,51 @@ function num(text: string): number | undefined {
 
 type Basis = '100g' | 'serving';
 
-/** Label on the left, input on the right with a unit suffix: the "Add Food" row layout. */
+/** Reference "Add Food" row: outlined box, grey label on the left, value typed on the right, unit after it. */
 function Field({
   label,
   required,
   suffix,
-  children,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
 }: {
   label: string;
   required?: boolean;
   suffix?: string;
-  children: ReactNode;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder?: string;
+  keyboardType?: TextInputProps['keyboardType'];
 }) {
-  const theme = useTheme();
   return (
-    <View style={[styles.field, { backgroundColor: theme.backgroundElement }]}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.fieldLabel}>
-        {label}
-        {required ? '*' : ''}
-      </ThemedText>
-      <View style={styles.fieldInput}>{children}</View>
-      {suffix ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {suffix}
+    <TextField
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      keyboardType={keyboardType}
+      accessibilityLabel={label}
+      style={styles.input}
+      leading={
+        <ThemedText type="small" themeColor="textSecondary" style={styles.fieldLabel}>
+          {label}
+          {required ? '*' : ''}
         </ThemedText>
-      ) : null}
-    </View>
+      }
+      trailing={
+        suffix ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {suffix}
+          </ThemedText>
+        ) : undefined
+      }
+    />
   );
 }
 
 export default function AddFoodScreen() {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [basis, setBasis] = useState<Basis>('100g');
@@ -110,59 +122,45 @@ export default function AddFoodScreen() {
     }
   };
 
-  const inputStyle = [styles.input, { color: theme.text }];
   const unit = basis === 'serving' ? 'per serving' : 'per 100 g';
 
   return (
     <ThemedView style={styles.flex}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          <Field label="Brand name">
-            <TextField value={brand} onChangeText={setBrand} placeholder="ex. Campbell's" accessibilityLabel="Brand" style={inputStyle} />
-          </Field>
-          <Field label="Description" required>
-            <TextField value={name} onChangeText={setName} placeholder="ex. Chicken noodle soup" accessibilityLabel="Food name" style={inputStyle} />
-          </Field>
-          <Field label="Serving size" required={basis === 'serving'}>
-            <TextField value={servingLabel} onChangeText={setServingLabel} placeholder="ex. 1 cup" accessibilityLabel="Serving label" style={inputStyle} />
-          </Field>
-          <Field label="Serving weight" required={basis === 'serving'} suffix="g">
-            <TextField
-              value={servingGrams}
-              onChangeText={setServingGrams}
-              placeholder="ex. 240"
-              keyboardType="decimal-pad"
-              accessibilityLabel="Serving grams"
-              style={inputStyle}
-            />
-          </Field>
+          <Field label="Brand name" value={brand} onChangeText={setBrand} placeholder="ex. Campbell's" />
+          <Field label="Description" required value={name} onChangeText={setName} placeholder="ex. Chicken noodle soup" />
+          <Field label="Serving size" required={basis === 'serving'} value={servingLabel} onChangeText={setServingLabel} placeholder="ex. 1 cup" />
+          <Field
+            label="Serving weight"
+            required={basis === 'serving'}
+            suffix="(g)"
+            value={servingGrams}
+            onChangeText={setServingGrams}
+            placeholder="ex. 240"
+            keyboardType="decimal-pad"
+          />
 
-          <SectionLabel>Nutrition</SectionLabel>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.basisLabel}>
+            Nutrition facts
+          </ThemedText>
           <View style={styles.chips}>
             <Chip label="Per 100 g" selected={basis === '100g'} onPress={() => setBasis('100g')} />
             <Chip label="Per serving" selected={basis === 'serving'} onPress={() => setBasis('serving')} />
           </View>
-          <Field label="Calories" required suffix="kcal">
-            <TextField value={cal} onChangeText={setCal} placeholder="0" keyboardType="decimal-pad" accessibilityLabel={`Calories ${unit}`} style={inputStyle} />
-          </Field>
-          <Field label="Protein" suffix="(g)">
-            <TextField value={protein} onChangeText={setProtein} placeholder="0" keyboardType="decimal-pad" accessibilityLabel={`Protein ${unit}`} style={inputStyle} />
-          </Field>
-          <Field label="Carbs" suffix="(g)">
-            <TextField value={carbs} onChangeText={setCarbs} placeholder="0" keyboardType="decimal-pad" accessibilityLabel={`Carbs ${unit}`} style={inputStyle} />
-          </Field>
-          <Field label="Total fat" suffix="(g)">
-            <TextField value={fat} onChangeText={setFat} placeholder="0" keyboardType="decimal-pad" accessibilityLabel={`Fat ${unit}`} style={inputStyle} />
-          </Field>
+          <Field label="Calories" required value={cal} onChangeText={setCal} placeholder="0" keyboardType="decimal-pad" />
+          <Field label="Protein" suffix="(g)" value={protein} onChangeText={setProtein} placeholder="0" keyboardType="decimal-pad" />
+          <Field label="Carbs" suffix="(g)" value={carbs} onChangeText={setCarbs} placeholder="0" keyboardType="decimal-pad" />
+          <Field label="Total fat" suffix="(g)" value={fat} onChangeText={setFat} placeholder="0" keyboardType="decimal-pad" />
           <ThemedText type="small" themeColor="textSecondary">
             {basis === 'serving'
-              ? 'Values are what the label shows for one serving; the app converts them to per 100 g.'
+              ? `Values are what the label shows ${unit}; the app converts them to per 100 g.`
               : 'Values are per 100 g. Foods you create are saved to My foods.'}
           </ThemedText>
           {error ? <Notice tone="bad">{error}</Notice> : null}
         </ScrollView>
 
-        <View style={[styles.footer, { borderTopColor: theme.backgroundSelected, paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
           <Button label="Save food" onPress={save} disabled={!canSave} loading={saving} />
         </View>
       </KeyboardAvoidingView>
@@ -172,19 +170,10 @@ export default function AddFoodScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.two },
-  field: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    borderRadius: Radius.md,
-    paddingLeft: Spacing.three,
-    paddingRight: Spacing.three,
-    minHeight: 52,
-  },
-  fieldLabel: { width: 120 },
-  fieldInput: { flex: 1 },
-  input: { backgroundColor: 'transparent', paddingHorizontal: 0, minHeight: 44, textAlign: 'right' },
+  content: { padding: Spacing.three, gap: Spacing.two + Spacing.one },
+  fieldLabel: { fontSize: 15, minWidth: 110 },
+  input: { textAlign: 'right' },
+  basisLabel: { marginTop: Spacing.two },
   chips: { flexDirection: 'row', gap: Spacing.two },
-  footer: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth },
+  footer: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
 });

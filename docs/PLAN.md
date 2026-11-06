@@ -1,8 +1,10 @@
 # Build Plan — Personal AI Nutrition & Fitness Tracker
 
 Source of truth for scope: the PRD (`docs/PRD.md`). Visual reference: the Figma board
-screenshots in `docs/reference/figma/` (Cal AI screens — use for layout and flow only,
-never copy assets or branding).
+screenshots in `docs/reference/figma/`, designed by a peer for this app — match their visual
+design (colors, type, spacing, components, flows) exactly. The screens carry the "Cal AI" name
+and apple logo, which are not ours: the app keeps its own "Fuel" wordmark and flame icon. Design
+tokens live in `src/constants/theme.ts`; line icons in `src/components/ui/icons.tsx`.
 
 ## Stack decisions
 

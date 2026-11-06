@@ -1,47 +1,61 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
+ * Design tokens, taken from the reference board (docs/PLAN.md): white elevated cards on a white
+ * canvas, flat light-grey surfaces for secondary rows, pure black primary actions, soft shadows,
+ * and the red / tan / blue macro accents.
  */
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+import { Platform, type ViewStyle } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#111111',
+    background: '#FFFFFF',
+    /** Elevated card surface (white, with `Elevation.card`). */
+    surface: '#FFFFFF',
+    /** Flat secondary surface: list rows, selected tab circle, intensity card. */
+    backgroundElement: '#F4F4F6',
+    backgroundSelected: '#E9E9EC',
+    /** Hairline borders and outlined inputs. */
+    border: '#E4E4E7',
+    textSecondary: '#8E8E93',
     /** Semantic nutrition accents. */
-    calories: '#F26B21',
-    protein: '#E5484D',
-    carbs: '#E5A00D',
-    fat: '#3E7BFA',
+    calories: '#111111',
+    protein: '#E0635A',
+    carbs: '#E3A160',
+    fat: '#5E8DEA',
     /** Over-target / destructive. */
-    warning: '#D93025',
+    warning: '#D9534F',
     /** Unfilled ring / bar track. */
-    track: '#E6E7EB',
+    track: '#ECECEE',
     /** Text on a filled accent or primary surface. */
-    onPrimary: '#ffffff',
+    onPrimary: '#FFFFFF',
     /** Primary button / strong surface. */
-    primary: '#111214',
+    primary: '#000000',
+    /** Disabled primary button. */
+    primaryDisabled: '#B8B8BC',
+    /** Positive state (healthy BMI, saved). */
+    success: '#4DAE65',
   },
   dark: {
-    text: '#ffffff',
+    text: '#FFFFFF',
     background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-    calories: '#FF8A4C',
-    protein: '#FF6B70',
-    carbs: '#F5B93A',
-    fat: '#6A9BFF',
-    warning: '#FF6B61',
-    track: '#2E3135',
+    surface: '#141416',
+    backgroundElement: '#1C1C1F',
+    backgroundSelected: '#2A2A2E',
+    border: '#2E2E33',
+    textSecondary: '#A1A1A8',
+    calories: '#FFFFFF',
+    protein: '#F07A72',
+    carbs: '#EDB178',
+    fat: '#7BA3F2',
+    warning: '#F06B66',
+    track: '#2A2A2E',
     onPrimary: '#000000',
-    primary: '#ffffff',
+    primary: '#FFFFFF',
+    primaryDisabled: '#5A5A60',
+    success: '#5FC27A',
   },
 } as const;
 
@@ -83,12 +97,30 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  sm: 8,
-  md: 14,
-  lg: 20,
+  sm: 10,
+  md: 16,
+  lg: 22,
   xl: 28,
   pill: 999,
 } as const;
+
+/** Soft shadows from the reference: cards barely lift; floating controls lift more. */
+export const Elevation: Record<'card' | 'float', ViewStyle> = {
+  card: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  float: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
+};
 
 /** Font sizes / line heights for the UI kit (ThemedText keeps its own presets). */
 export const Typography = {
@@ -100,5 +132,6 @@ export const Typography = {
   display: { fontSize: 44, lineHeight: 48 },
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+/** Height of the floating tab bar plus its margin; scrolling screens pad their bottom by this. */
+export const BottomTabInset = 96;
 export const MaxContentWidth = 800;

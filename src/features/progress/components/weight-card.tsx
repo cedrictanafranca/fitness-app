@@ -1,14 +1,20 @@
+import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Radius, Spacing } from '@/constants/theme';
 import { weightRepo } from '@/data/repos';
 import { formatWeight } from '@/features/settings/units';
 import { useTheme } from '@/hooks/use-theme';
 import type { UserProfile, WeightRecord } from '@/core/types';
 
 import { formatDateLabel } from '../dates';
-import { Card } from './card';
 
+const PREVIEW_ROWS = 3;
+
+/** "Current Weight" card: big value, log button, black timeline bar with the start and 7-day average. */
 export function WeightCard({
   profile,
   currentWeight,
@@ -26,13 +32,16 @@ export function WeightCard({
 }) {
   const theme = useTheme();
   const { units } = profile;
+  const [showAll, setShowAll] = useState(false);
+  const start = history[history.length - 1];
+  const rows = showAll ? history : history.slice(0, PREVIEW_ROWS);
 
   return (
-    <Card title="Weight" caption={`Last ${history.length} entries`}>
-      <View style={styles.summaryRow}>
+    <Card padding={Spacing.three + Spacing.one} style={styles.card}>
+      <View style={styles.top}>
         <View style={styles.summaryBlock}>
           <ThemedText type="small" themeColor="textSecondary">
-            Current
+            Current Weight
           </ThemedText>
           <Text style={[styles.bigValue, { color: theme.text }]}>
             {currentWeight ? formatWeight(currentWeight.weightKg, units) : '—'}
@@ -41,27 +50,20 @@ export function WeightCard({
             {currentWeight ? formatDateLabel(currentWeight.date) : 'No entries yet'}
           </ThemedText>
         </View>
-        <View style={styles.summaryBlock}>
-          <ThemedText type="small" themeColor="textSecondary">
-            7-day avg
-          </ThemedText>
-          <Text style={[styles.bigValue, { color: theme.text }]}>
-            {sevenDayAverageKg != null ? formatWeight(sevenDayAverageKg, units) : '—'}
-          </Text>
-          <ThemedText type="small" themeColor="textSecondary">
-            {sevenDayEntryCount === 0
-              ? 'No entries this week'
-              : `${sevenDayEntryCount} ${sevenDayEntryCount === 1 ? 'entry' : 'entries'}`}
-          </ThemedText>
-        </View>
+        <Button label="Log weight" small onPress={onLogWeight} />
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={onLogWeight}
-        style={[styles.primaryButton, { backgroundColor: theme.text }]}>
-        <Text style={[styles.primaryLabel, { color: theme.background }]}>Log weight</Text>
-      </Pressable>
+      <View style={[styles.bar, { backgroundColor: theme.text }]} />
+      <View style={styles.barLabels}>
+        <ThemedText type="small" themeColor="textSecondary">
+          Start: <ThemedText type="smallBold">{start ? formatWeight(start.weightKg, units) : '—'}</ThemedText>
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          7-day avg:{' '}
+          <ThemedText type="smallBold">{sevenDayAverageKg != null ? formatWeight(sevenDayAverageKg, units) : '—'}</ThemedText>
+          {sevenDayEntryCount > 0 ? ` (${sevenDayEntryCount})` : ''}
+        </ThemedText>
+      </View>
 
       {history.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
@@ -69,9 +71,16 @@ export function WeightCard({
         </ThemedText>
       ) : (
         <View style={styles.list}>
-          {history.map((entry) => (
+          {rows.map((entry) => (
             <HistoryRow key={entry.id} entry={entry} units={units} />
           ))}
+          {history.length > PREVIEW_ROWS ? (
+            <Pressable accessibilityRole="button" onPress={() => setShowAll((v) => !v)} style={styles.toggle} hitSlop={6}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                {showAll ? 'Show fewer' : `Show all ${history.length} entries`}
+              </ThemedText>
+            </Pressable>
+          ) : null}
         </View>
       )}
     </Card>
@@ -99,8 +108,8 @@ function HistoryRow({ entry, units }: { entry: WeightRecord; units: UserProfile[
   };
 
   return (
-    <View style={[styles.row, { borderTopColor: theme.backgroundSelected }]}>
-      <ThemedText type="default" style={styles.rowDate}>
+    <View style={[styles.row, { borderTopColor: theme.border }]}>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.rowDate}>
         {label}
       </ThemedText>
       <Text style={[styles.rowValue, { color: theme.text }]}>{value}</Text>
@@ -109,56 +118,23 @@ function HistoryRow({ entry, units }: { entry: WeightRecord; units: UserProfile[
         accessibilityLabel={`Delete weight entry for ${label}`}
         hitSlop={8}
         onPress={confirmDelete}>
-        <Text style={styles.deleteLabel}>Delete</Text>
+        <Text style={[styles.deleteLabel, { color: theme.warning }]}>Delete</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  summaryRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  summaryBlock: {
-    flex: 1,
-    gap: 4,
-  },
-  bigValue: {
-    fontSize: 26,
-    fontWeight: '700',
-    lineHeight: 32,
-  },
-  primaryButton: {
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  list: {
-    marginTop: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  rowDate: {
-    flex: 1,
-  },
-  rowValue: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  deleteLabel: {
-    color: '#D92D20',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  card: { gap: Spacing.three },
+  top: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.three },
+  summaryBlock: { flex: 1, gap: 2 },
+  bigValue: { fontSize: 30, fontWeight: 700, lineHeight: 36, letterSpacing: -0.3 },
+  bar: { height: 6, borderRadius: Radius.pill },
+  barLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: -Spacing.two },
+  list: { marginTop: Spacing.one },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  rowDate: { flex: 1 },
+  rowValue: { fontSize: 15, fontWeight: 600 },
+  deleteLabel: { fontSize: 14, fontWeight: 600 },
+  toggle: { paddingTop: Spacing.two, alignSelf: 'center' },
 });

@@ -10,13 +10,13 @@ export function MacroRow({ totals }: { totals: DailyTotals }) {
   const { consumed, targets } = totals;
   return (
     <View style={styles.row}>
-      <MacroCard prominent label="Protein" consumed={consumed.protein} target={targets.protein} color={theme.protein} />
-      <MacroCard label="Carbs" consumed={consumed.carbs} target={targets.carbs} color={theme.carbs} />
-      <MacroCard label="Fat" consumed={consumed.fat} target={targets.fat} color={theme.fat} />
+      <MacroCard label="Protein" icon="drumstick" consumed={consumed.protein} target={targets.protein} color={theme.protein} />
+      <MacroCard label="Carbs" icon="wheat" consumed={consumed.carbs} target={targets.carbs} color={theme.carbs} />
+      <MacroCard label="Fat" icon="drop" consumed={consumed.fat} target={targets.fat} color={theme.fat} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: Spacing.two },
+  row: { flexDirection: 'row', gap: Spacing.two + Spacing.one },
 });

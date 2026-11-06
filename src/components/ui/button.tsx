@@ -24,6 +24,10 @@ export interface ButtonProps {
   accessibilityLabel?: string;
 }
 
+/**
+ * Pill buttons from the reference: solid black primary (grey when disabled, still white text),
+ * white outlined secondary, text-only ghost / destructive.
+ */
 export function Button({
   label,
   onPress,
@@ -40,10 +44,10 @@ export function Button({
   const inactive = disabled || loading;
 
   const palette = {
-    primary: { bg: theme.primary, fg: theme.onPrimary },
-    secondary: { bg: theme.backgroundSelected, fg: theme.text },
-    ghost: { bg: 'transparent', fg: theme.text },
-    destructive: { bg: 'transparent', fg: theme.warning },
+    primary: { bg: inactive ? theme.primaryDisabled : theme.primary, fg: theme.onPrimary, border: 'transparent' },
+    secondary: { bg: theme.surface, fg: theme.text, border: theme.border },
+    ghost: { bg: 'transparent', fg: theme.text, border: 'transparent' },
+    destructive: { bg: 'transparent', fg: theme.warning, border: 'transparent' },
   }[variant];
 
   return (
@@ -57,9 +61,9 @@ export function Button({
         styles.base,
         small ? styles.small : styles.regular,
         fullWidth && styles.fullWidth,
-        { backgroundColor: palette.bg },
+        { backgroundColor: palette.bg, borderColor: palette.border },
         pressed && styles.pressed,
-        inactive && styles.inactive,
+        inactive && variant !== 'primary' && styles.inactive,
         style,
       ]}>
       {loading ? (
@@ -81,13 +85,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.pill,
+    borderWidth: 1.5,
     alignSelf: 'flex-start',
   },
-  regular: { minHeight: 52, paddingHorizontal: Spacing.four },
-  small: { minHeight: 36, paddingHorizontal: Spacing.three },
+  regular: { minHeight: 56, paddingHorizontal: Spacing.four },
+  small: { minHeight: 38, paddingHorizontal: Spacing.three },
   fullWidth: { alignSelf: 'stretch' },
   content: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   label: { fontWeight: 600 },
-  pressed: { opacity: 0.7 },
+  pressed: { opacity: 0.75 },
   inactive: { opacity: 0.5 },
 });

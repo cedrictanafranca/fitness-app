@@ -29,5 +29,5 @@ export function SectionHeader({ title, actionLabel, onActionPress }: SectionHead
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Spacing.two },
-  title: { fontSize: 18, lineHeight: 24, fontWeight: 700 },
+  title: { fontSize: 21, lineHeight: 26, fontWeight: 700 },
 });
